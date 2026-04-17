@@ -55,6 +55,8 @@
 |---------|------|---------|
 | **大脑积木** | LLM（对话/生成） | `LLMClient` from `coze-coding-dev-sdk` |
 | **大脑积木** | 图片生成 | `ImageGenerationClient` from `coze-coding-dev-sdk` |
+| **大脑积木** | 视频生成 | `VideoGenerationClient` from `coze-coding-dev-sdk` |
+| **大脑积木** | 语音合成 (TTS) | `TTSClient` from `coze-coding-dev-sdk` |
 
 ### LLM 使用示例
 
@@ -94,9 +96,104 @@ if (helper.success) {
 }
 ```
 
+### 视频生成使用示例
+
+```typescript
+import { VideoGenerationClient, Config } from 'coze-coding-dev-sdk';
+
+// 初始化
+const config = new Config();
+const client = new VideoGenerationClient(config);
+
+// 生成视频
+const response = await client.generate({
+  prompt: '温柔的故事动画效果',
+  prompt_en: 'Gentle story animation effect',
+  image_url: 'https://example.com/image.jpg',
+  duration: 5,
+  resolution: '720p',
+  fps: 24,
+});
+
+const helper = client.getResponseHelper(response);
+if (helper.success) {
+  const videoUrl = helper.videoUrl;
+}
+```
+
+### TTS 语音合成使用示例
+
+```typescript
+import { TTSClient, Config } from 'coze-coding-dev-sdk';
+
+// 初始化
+const config = new Config();
+const client = new TTSClient(config);
+
+// 文字转语音
+const response = await client.textToSpeech({
+  text: '故事文字内容',
+  stream: false, // 返回URL模式
+});
+
+const helper = client.getResponseHelper(response);
+if (helper.success) {
+  const audioUrl = helper.audioUrl;
+}
+```
+
 ## API 接口
 
 | 接口 | 方法 | 功能 |
 |-----|------|------|
-| `/api/story/generate` | POST | 生成儿童故事内容 |
+| `/api/story/generate` | POST | 生成儿童故事内容（支持中英文） |
 | `/api/story/generate-illustrations` | POST | 为故事生成配套插图 |
+| `/api/story/generate-image` | POST | 根据故事文字生成单张插图 |
+| `/api/story/generate-batch-images` | POST | 批量生成多张插图 |
+| `/api/story/generate-video` | POST | 根据插图生成视频 |
+| `/api/story/generate-story-videos` | POST | 为故事每页生成视频 |
+| `/api/story/text-to-speech` | POST | 文字转语音（TTS） |
+| `/api/story/generate-story-audio` | POST | 为故事每页生成语音 |
+
+### 接口详细说明
+
+#### 1. 生成故事内容
+- **端点**: `POST /api/story/generate`
+- **参数**:
+  - `theme` (string, 必填): 故事主题
+  - `language` (string, 可选): 语言，"zh"（中文，默认）或 "en"（英文）
+- **示例**:
+```bash
+# 中文故事
+curl -X POST -H 'Content-Type: application/json' \
+  -d '{"theme": "小兔子去上学", "language": "zh"}' \
+  http://localhost:5000/api/story/generate
+
+# 英文故事
+curl -X POST -H 'Content-Type: application/json' \
+  -d '{"theme": "Little Rabbit Goes to School", "language": "en"}' \
+  http://localhost:5000/api/story/generate
+```
+
+#### 2. 生成视频
+- **端点**: `POST /api/story/generate-video`
+- **参数**:
+  - `imageUrl` (string, 必填): 插图URL
+- **示例**:
+```bash
+curl -X POST -H 'Content-Type: application/json' \
+  -d '{"imageUrl": "https://example.com/illustration.jpg"}' \
+  http://localhost:5000/api/story/generate-video
+```
+
+#### 3. 文字转语音
+- **端点**: `POST /api/story/text-to-speech`
+- **参数**:
+  - `text` (string, 必填): 要转换的文字
+  - `language` (string, 可选): 语言，"zh" 或 "en"
+- **示例**:
+```bash
+curl -X POST -H 'Content-Type: application/json' \
+  -d '{"text": "从前有一只小兔子", "language": "zh"}' \
+  http://localhost:5000/api/story/text-to-speech
+```

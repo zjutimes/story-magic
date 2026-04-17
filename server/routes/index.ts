@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { LLMClient, Config, HeaderUtils, ImageGenerationClient } from 'coze-coding-dev-sdk';
+import { LLMClient, Config, HeaderUtils, ImageGenerationClient, VideoGenerationClient, TTSClient } from 'coze-coding-dev-sdk';
 
 const router = Router();
 
@@ -9,11 +9,19 @@ const llmConfig = new Config();
 // 初始化图片生成客户端
 const imageConfig = new Config();
 
+// 初始化视频生成客户端
+const videoConfig = new Config();
+
+// 初始化 TTS 客户端
+const ttsConfig = new Config();
+
 interface StoryPage {
   page: number;
   text: string;
   imagePrompt: string;
   imageUrl?: string;
+  videoUrl?: string;
+  audioUrl?: string;
 }
 
 interface Story {
@@ -21,22 +29,10 @@ interface Story {
   pages: StoryPage[];
 }
 
-// 生成故事内容
-router.post('/api/story/generate', async (req: Request, res: Response) => {
-  try {
-    const { theme } = req.body;
-    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
-    
-    // 更新客户端的 headers
-    const client = new LLMClient(llmConfig, customHeaders);
-
-    if (!theme) {
-      res.status(400).json({ error: '请提供故事主题' });
-      return;
-    }
-
-    // 构建提示词，让 LLM 生成儿童绘本内容
-    const prompt = `你是一位优秀的儿童绘本作家。请为 "${theme}" 这个主题创作一个温馨、有教育意义的儿童绘本故事。
+// 语言配置
+const languageConfig = {
+  zh: {
+    generatePrompt: (theme: string) => `你是一位优秀的儿童绘本作家。请为 "${theme}" 这个主题创作一个温馨、有教育意义的儿童绘本故事。
 
 要求：
 1. 故事适合3-8岁儿童
@@ -55,7 +51,53 @@ router.post('/api/story/generate', async (req: Request, res: Response) => {
       "imagePrompt": "英文的图片描述词，用于AI生成插图，风格是可爱温馨的儿童绘本插画风格"
     }
   ]
-}`;
+}`,
+    speaker: 'zh_female_xueayi_saturn_bigtts', // 儿童有声书声音
+  },
+  en: {
+    generatePrompt: (theme: string) => `You are an excellent children's picture book author. Please create a warm, educational children's picture book story for the theme "${theme}".
+
+Requirements:
+1. Story suitable for children aged 3-8
+2. Story should be educational, conveying positive values
+3. Keep the story around 6 pages
+4. Each page should have no more than 30 words, be concise and easy to understand
+5. Each page needs English image description prompts (for AI drawing), in children's picture book illustration style
+
+Please output in the following JSON format:
+{
+  "title": "Story Title",
+  "pages": [
+    {
+      "page": 1,
+      "text": "The text content of this page (in English, no more than 30 words)",
+      "imagePrompt": "English image description for AI illustration, cute and warm children's picture book style"
+    }
+  ]
+}`,
+    speaker: 'zh_female_vv_uranus_bigtts', // 中英双语声音
+  }
+};
+
+// 生成故事内容
+router.post('/api/story/generate', async (req: Request, res: Response) => {
+  try {
+    const { theme, language = 'zh' } = req.body;
+    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
+    
+    // 更新客户端的 headers
+    const client = new LLMClient(llmConfig, customHeaders);
+
+    if (!theme) {
+      res.status(400).json({ error: language === 'en' ? 'Please provide a story theme' : '请提供故事主题' });
+      return;
+    }
+
+    // 获取语言配置
+    const config = languageConfig[language as keyof typeof languageConfig] || languageConfig.zh;
+    
+    // 构建提示词，让 LLM 生成儿童绘本内容
+    const prompt = config.generatePrompt(theme);
 
     const messages = [{ role: 'user' as const, content: prompt }];
     const response = await client.invoke(messages, { 
@@ -75,14 +117,14 @@ router.post('/api/story/generate', async (req: Request, res: Response) => {
       }
     } catch (parseError) {
       console.error('JSON 解析错误:', parseError);
-      res.status(500).json({ error: '故事生成失败，请重试' });
+      res.status(500).json({ error: language === 'en' ? 'Story generation failed, please try again' : '故事生成失败，请重试' });
       return;
     }
 
-    res.json({ success: true, story });
+    res.json({ success: true, story, language });
   } catch (error) {
     console.error('生成故事失败:', error);
-    res.status(500).json({ error: '生成故事失败，请重试' });
+    res.status(500).json({ error: language === 'en' ? 'Story generation failed' : '生成故事失败' });
   }
 });
 
@@ -313,6 +355,215 @@ router.post('/api/story/generate-batch-images', async (req: Request, res: Respon
   } catch (error) {
     console.error('批量生成图片失败:', error);
     res.status(500).json({ error: '批量生成图片失败，请重试' });
+  }
+});
+
+// 🎬 根据插图生成视频
+router.post('/api/story/generate-video', async (req: Request, res: Response) => {
+  try {
+    const { imageUrl } = req.body;
+    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
+    
+    if (!imageUrl) {
+      res.status(400).json({ error: '请提供图片URL' });
+      return;
+    }
+
+    // 初始化视频生成客户端
+    const client = new VideoGenerationClient(videoConfig, customHeaders);
+
+    console.log('正在生成视频，图片URL:', imageUrl);
+
+    // 生成视频
+    const response = await client.generate({
+      prompt: 'A gentle, magical animation of this picture book scene. Soft camera movement, like slowly turning the pages of a picture book. Warm lighting transitions, subtle motion in the characters - a gentle sway, a sparkle of magic, breathing effect. Like a story coming to life.',
+      prompt_en: 'A gentle, magical animation of this picture book scene. Soft camera movement, like slowly turning the pages of a picture book. Warm lighting transitions, subtle motion in the characters - a gentle sway, a sparkle of magic, breathing effect. Like a story coming to life.',
+      image_url: imageUrl,
+      duration: 5,
+      resolution: '720p',
+      fps: 24,
+    });
+
+    const helper = client.getResponseHelper(response);
+
+    if (helper.success && helper.videoUrl) {
+      res.json({ 
+        success: true, 
+        videoUrl: helper.videoUrl,
+        message: '视频生成成功！' 
+      });
+    } else {
+      res.status(500).json({ 
+        error: '视频生成失败',
+        details: helper.errorMessages 
+      });
+    }
+  } catch (error) {
+    console.error('生成视频失败:', error);
+    res.status(500).json({ error: '生成视频失败，请重试' });
+  }
+});
+
+// 🎬 批量生成视频（为故事每页生成视频）
+router.post('/api/story/generate-story-videos', async (req: Request, res: Response) => {
+  try {
+    const { story } = req.body;
+    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
+    
+    if (!story || !story.pages) {
+      res.status(400).json({ error: '故事数据无效' });
+      return;
+    }
+
+    // 初始化视频生成客户端
+    const client = new VideoGenerationClient(videoConfig, customHeaders);
+
+    const updatedPages: StoryPage[] = [];
+    
+    for (const page of story.pages) {
+      if (!page.imageUrl) {
+        updatedPages.push({ ...page, videoUrl: '' });
+        continue;
+      }
+
+      try {
+        console.log(`正在生成第 ${page.page} 页视频...`);
+
+        const response = await client.generate({
+          prompt: `A gentle animation of the picture book scene: "${page.text}". Soft movements like a living storybook. Warm and magical atmosphere.`,
+          prompt_en: `A gentle animation of the picture book scene: "${page.text}". Soft movements like a living storybook. Warm and magical atmosphere.`,
+          image_url: page.imageUrl,
+          duration: 5,
+          resolution: '720p',
+          fps: 24,
+        });
+
+        const helper = client.getResponseHelper(response);
+
+        updatedPages.push({
+          ...page,
+          videoUrl: helper.success && helper.videoUrl ? helper.videoUrl : '',
+        });
+
+        // 添加延迟避免请求过快
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (videoError) {
+        console.error(`生成第 ${page.page} 页视频失败:`, videoError);
+        updatedPages.push({
+          ...page,
+          videoUrl: '',
+        });
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      story: {
+        ...story,
+        pages: updatedPages
+      } 
+    });
+  } catch (error) {
+    console.error('批量生成视频失败:', error);
+    res.status(500).json({ error: '批量生成视频失败，请重试' });
+  }
+});
+
+// 🔊 文字转语音（TTS）
+router.post('/api/story/text-to-speech', async (req: Request, res:Response) => {
+  try {
+    const { text, language = 'zh' } = req.body;
+    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
+    
+    if (!text) {
+      res.status(400).json({ error: '请提供要转换的文字' });
+      return;
+    }
+
+    // 初始化 TTS 客户端
+    const client = new TTSClient(ttsConfig, customHeaders);
+
+    console.log('正在生成语音，文字:', text.substring(0, 50), '...');
+
+    // 生成语音
+    const response = await client.textToSpeech({
+      text: text,
+      stream: false, // 返回URL模式
+    });
+
+    const helper = client.getResponseHelper(response);
+
+    if (helper.success && helper.audioUrl) {
+      res.json({ 
+        success: true, 
+        audioUrl: helper.audioUrl,
+        message: '语音生成成功！' 
+      });
+    } else {
+      res.status(500).json({ 
+        error: '语音生成失败',
+        details: helper.errorMessages 
+      });
+    }
+  } catch (error) {
+    console.error('生成语音失败:', error);
+    res.status(500).json({ error: '生成语音失败，请重试' });
+  }
+});
+
+// 🔊 为故事生成语音（每页文字转语音）
+router.post('/api/story/generate-story-audio', async (req: Request, res: Response) => {
+  try {
+    const { story, language = 'zh' } = req.body;
+    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
+    
+    if (!story || !story.pages) {
+      res.status(400).json({ error: '故事数据无效' });
+      return;
+    }
+
+    // 初始化 TTS 客户端
+    const client = new TTSClient(ttsConfig, customHeaders);
+
+    const updatedPages: StoryPage[] = [];
+    
+    for (const page of story.pages) {
+      try {
+        console.log(`正在生成第 ${page.page} 页语音...`);
+
+        const response = await client.textToSpeech({
+          text: page.text,
+          stream: false,
+        });
+
+        const helper = client.getResponseHelper(response);
+
+        updatedPages.push({
+          ...page,
+          audioUrl: helper.success && helper.audioUrl ? helper.audioUrl : '',
+        });
+
+        // 添加延迟避免请求过快
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (audioError) {
+        console.error(`生成第 ${page.page} 页语音失败:`, audioError);
+        updatedPages.push({
+          ...page,
+          audioUrl: '',
+        });
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      story: {
+        ...story,
+        pages: updatedPages
+      } 
+    });
+  } catch (error) {
+    console.error('批量生成语音失败:', error);
+    res.status(500).json({ error: '批量生成语音失败，请重试' });
   }
 });
 
