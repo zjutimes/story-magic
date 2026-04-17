@@ -37,7 +37,7 @@ async function startServer(): Promise<Server> {
   await setupVite(app);
 
   // 全局错误处理
-  app.use((err: Error, req: express.Request, res: express.Response) => {
+  app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.error('Server error:', err);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const status = 'status' in err ? (err as any).status || 500 : 500;
