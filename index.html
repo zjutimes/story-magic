@@ -1,13 +1,419 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="扣子编程，你的 AI 开发伙伴已就位" />
-    <title>扣子编程 - AI 开发伙伴</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/index.ts"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Story Magic - AI 儿童绘本创作坊</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      font-family: 'Nunito', sans-serif;
+    }
+    
+    /* 彩虹渐变背景 */
+    .rainbow-bg {
+      background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 25%, #fecfef 25%, #a1c4fd 50%, #c2e9fb 75%, #fbc2eb 100%);
+    }
+    
+    /* 泡泡动画 */
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(5deg); }
+    }
+    
+    @keyframes float2 {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-15px) rotate(-5deg); }
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    @keyframes sparkle {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.2); }
+    }
+    
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(-3deg); }
+      50% { transform: rotate(3deg); }
+    }
+    
+    .float { animation: float 3s ease-in-out infinite; }
+    .float-delay { animation: float2 4s ease-in-out infinite; animation-delay: 1s; }
+    .float-delay-2 { animation: float 5s ease-in-out infinite; animation-delay: 2s; }
+    .bounce { animation: bounce 2s ease-in-out infinite; }
+    .sparkle { animation: sparkle 1.5s ease-in-out infinite; }
+    .wiggle { animation: wiggle 0.5s ease-in-out infinite; }
+    
+    /* 云朵样式 */
+    .cloud {
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .cloud::before, .cloud::after {
+      content: '';
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+    }
+    
+    /* 星星样式 */
+    .star {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: #FFD700;
+      clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    }
+    
+    /* 功能卡片悬停效果 */
+    .feature-card {
+      transition: all 0.3s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-10px);
+    }
+    
+    /* 按钮脉冲动画 */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.8); opacity: 1; }
+      100% { transform: scale(1.3); opacity: 0; }
+    }
+    
+    .cta-button::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 9999px;
+      background: #FF6B9D;
+      animation: pulse-ring 1.5s ease-out infinite;
+      z-index: -1;
+    }
+  </style>
+</head>
+<body class="bg-yellow-50 overflow-x-hidden">
+
+  <!-- ========== 要素1: 英雄区 ========== -->
+  <section class="min-h-screen rainbow-bg relative overflow-hidden flex items-center">
+    <!-- 漂浮的装饰元素 -->
+    <div class="absolute top-20 left-10 text-6xl float">🎨</div>
+    <div class="absolute top-40 right-20 text-5xl float-delay">📚</div>
+    <div class="absolute bottom-40 left-20 text-4xl float-delay-2">✨</div>
+    <div class="absolute bottom-20 right-40 text-5xl float">🌈</div>
+    <div class="absolute top-1/4 left-1/4 text-4xl sparkle">⭐</div>
+    <div class="absolute top-1/3 right-1/3 text-3xl sparkle" style="animation-delay: 0.5s;">⭐</div>
+    
+    <!-- 云朵装饰 -->
+    <div class="absolute top-10 left-1/4 cloud w-32 h-16 float"></div>
+    <div class="absolute top-20 right-1/4 cloud w-24 h-12 float-delay"></div>
+    
+    <div class="container mx-auto px-6 text-center relative z-10">
+      <!-- Logo -->
+      <div class="mb-6">
+        <span class="text-7xl bounce inline-block">📖</span>
+      </div>
+      
+      <!-- 主标题 -->
+      <h1 class="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 mb-6 drop-shadow-lg">
+        Story Magic
+      </h1>
+      
+      <!-- 副标题 -->
+      <h2 class="text-2xl md:text-4xl font-bold text-purple-800 mb-8">
+        AI 儿童绘本创作坊
+      </h2>
+      
+      <!-- 描述 -->
+      <p class="text-xl md:text-2xl text-purple-700 mb-12 max-w-2xl mx-auto leading-relaxed">
+        输入故事主题 ✨ <br class="md:hidden">
+        AI 帮你画插图、讲故事 🌈 <br>
+        创造属于宝贝的专属绘本！
+      </p>
+      
+      <!-- CTA 按钮 -->
+      <a href="#create" class="cta-button relative inline-block bg-gradient-to-r from-pink-500 to-orange-400 text-white text-2xl font-bold px-12 py-5 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all">
+        🚀 开始创作
+      </a>
+      
+      <!-- 年龄提示 -->
+      <p class="mt-6 text-purple-600 text-lg">
+        👶 适合 3-12 岁小朋友
+      </p>
+      
+      <!-- 滚动提示 -->
+      <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-4xl wiggle">
+        👇
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 要素2: 核心价值 ========== -->
+  <section class="py-20 bg-gradient-to-b from-pink-100 to-purple-100">
+    <div class="container mx-auto px-6">
+      <div class="text-center mb-16">
+        <span class="text-6xl mb-4 block">💫</span>
+        <h2 class="text-4xl md:text-5xl font-black text-purple-700 mb-4">
+          一句话说清 Story Magic
+        </h2>
+        <div class="w-24 h-2 bg-gradient-to-r from-pink-400 to-purple-500 mx-auto rounded-full"></div>
+      </div>
+      
+      <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-12 max-w-4xl mx-auto border-4 border-purple-200">
+        <p class="text-2xl md:text-3xl text-center text-purple-800 font-bold leading-relaxed">
+          🎨 <span class="text-pink-500">输入一个想法</span> → 
+          ✨ <span class="text-orange-500">AI 画出插图</span> → 
+          📖 <span class="text-purple-500">生成专属绘本</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 要素3: 功能展示 ========== -->
+  <section class="py-20 bg-gradient-to-b from-purple-100 to-blue-100">
+    <div class="container mx-auto px-6">
+      <div class="text-center mb-16">
+        <span class="text-6xl mb-4 block">🎁</span>
+        <h2 class="text-4xl md:text-5xl font-black text-purple-700 mb-4">
+          超棒的功能
+        </h2>
+        <p class="text-xl text-purple-600">每一个都让小朋友爱不释手！</p>
+      </div>
+      
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <!-- 功能卡片1 -->
+        <div class="feature-card bg-white rounded-3xl p-8 shadow-xl border-4 border-pink-200 text-center">
+          <div class="text-6xl mb-4">🤖</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-3">AI 写故事</h3>
+          <p class="text-purple-600">输入主题，AI 自动创作有趣的儿童故事！</p>
+        </div>
+        
+        <!-- 功能卡片2 -->
+        <div class="feature-card bg-white rounded-3xl p-8 shadow-xl border-4 border-orange-200 text-center">
+          <div class="text-6xl mb-4">🎨</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-3">画插图</h3>
+          <p class="text-purple-600">自动生成配套的精美插图，画风超可爱！</p>
+        </div>
+        
+        <!-- 功能卡片3 -->
+        <div class="feature-card bg-white rounded-3xl p-8 shadow-xl border-4 border-blue-200 text-center">
+          <div class="text-6xl mb-4">🎬</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-3">变动画</h3>
+          <p class="text-purple-600">静态插图一键变成会动的动画视频！</p>
+        </div>
+        
+        <!-- 功能卡片4 -->
+        <div class="feature-card bg-white rounded-3xl p-8 shadow-xl border-4 border-green-200 text-center">
+          <div class="text-6xl mb-4">🔊</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-3">讲故事</h3>
+          <p class="text-purple-600">AI 用温暖的声音朗读故事给宝宝听！</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 要素4: 使用流程 ========== -->
+  <section class="py-20 bg-gradient-to-b from-blue-100 to-green-100">
+    <div class="container mx-auto px-6">
+      <div class="text-center mb-16">
+        <span class="text-6xl mb-4 block">🪄</span>
+        <h2 class="text-4xl md:text-5xl font-black text-purple-700 mb-4">
+          3 步搞定！
+        </h2>
+        <p class="text-xl text-purple-600">简单到小朋友自己就能操作</p>
+      </div>
+      
+      <div class="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-4">
+        <!-- 步骤1 -->
+        <div class="text-center flex-1">
+          <div class="bg-white rounded-full w-32 h-32 mx-auto mb-6 flex items-center justify-center shadow-xl border-4 border-pink-300">
+            <span class="text-5xl">💡</span>
+          </div>
+          <div class="bg-pink-400 text-white text-2xl font-bold rounded-full w-10 h-10 mx-auto mb-3 flex items-center justify-center">1</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-2">想个主题</h3>
+          <p class="text-purple-600">比如"小兔子的冒险"</p>
+        </div>
+        
+        <!-- 箭头 -->
+        <div class="text-5xl text-purple-400 hidden md:block">→</div>
+        
+        <!-- 步骤2 -->
+        <div class="text-center flex-1">
+          <div class="bg-white rounded-full w-32 h-32 mx-auto mb-6 flex items-center justify-center shadow-xl border-4 border-orange-300">
+            <span class="text-5xl">✨</span>
+          </div>
+          <div class="bg-orange-400 text-white text-2xl font-bold rounded-full w-10 h-10 mx-auto mb-3 flex items-center justify-center">2</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-2">点一下</h3>
+          <p class="text-purple-600">AI 自动创作+画图</p>
+        </div>
+        
+        <!-- 箭头 -->
+        <div class="text-5xl text-purple-400 hidden md:block">→</div>
+        
+        <!-- 步骤3 -->
+        <div class="text-center flex-1">
+          <div class="bg-white rounded-full w-32 h-32 mx-auto mb-6 flex items-center justify-center shadow-xl border-4 border-green-300">
+            <span class="text-5xl">📖</span>
+          </div>
+          <div class="bg-green-400 text-white text-2xl font-bold rounded-full w-10 h-10 mx-auto mb-3 flex items-center justify-center">3</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-2">看绘本</h3>
+          <p class="text-purple-600">翻页阅读或听故事</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 要素5: 产品特色 ========== -->
+  <section class="py-20 bg-gradient-to-b from-green-100 to-yellow-100">
+    <div class="container mx-auto px-6">
+      <div class="text-center mb-16">
+        <span class="text-6xl mb-4 block">🌟</span>
+        <h2 class="text-4xl md:text-5xl font-black text-purple-700 mb-4">
+          为什么选择我们？
+        </h2>
+      </div>
+      
+      <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <!-- 特色1 -->
+        <div class="bg-white rounded-3xl p-8 shadow-xl text-center transform hover:scale-105 transition-all">
+          <div class="text-5xl mb-4">🎯</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-3">超简单</h3>
+          <p class="text-purple-600">不需要画画基础，只要会打字就能创作！</p>
+        </div>
+        
+        <!-- 特色2 -->
+        <div class="bg-white rounded-3xl p-8 shadow-xl text-center transform hover:scale-105 transition-all">
+          <div class="text-5xl mb-4">🧠</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-3">超智能</h3>
+          <p class="text-purple-600">AI 懂得小朋友的思维方式，创作最适合的故事！</p>
+        </div>
+        
+        <!-- 特色3 -->
+        <div class="bg-white rounded-3xl p-8 shadow-xl text-center transform hover:scale-105 transition-all">
+          <div class="text-5xl mb-4">🌈</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-3">超好看</h3>
+          <p class="text-purple-600">绘本风格精美插图，比买的书还漂亮！</p>
+        </div>
+        
+        <!-- 特色4 -->
+        <div class="bg-white rounded-3xl p-8 shadow-xl text-center transform hover:scale-105 transition-all">
+          <div class="text-5xl mb-4">🔊</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-3">能听故事</h3>
+          <p class="text-purple-600">宝宝可以自己听故事，解放妈妈双手！</p>
+        </div>
+        
+        <!-- 特色5 -->
+        <div class="bg-white rounded-3xl p-8 shadow-xl text-center transform hover:scale-105 transition-all">
+          <div class="text-5xl mb-4">🎬</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-3">能看动画</h3>
+          <p class="text-purple-600">静态图变动画，故事活灵活现！</p>
+        </div>
+        
+        <!-- 特色6 -->
+        <div class="bg-white rounded-3xl p-8 shadow-xl text-center transform hover:scale-105 transition-all">
+          <div class="text-5xl mb-4">🌍</div>
+          <h3 class="text-2xl font-bold text-purple-700 mb-3">中英双语</h3>
+          <p class="text-purple-600">支持中文和英文，学习外语更有趣！</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 要素6: 行动召唤 ========== -->
+  <section id="create" class="py-24 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 relative overflow-hidden">
+    <!-- 装饰 -->
+    <div class="absolute top-10 left-10 text-6xl float">⭐</div>
+    <div class="absolute top-20 right-20 text-5xl float-delay">✨</div>
+    <div class="absolute bottom-10 left-1/4 text-4xl float-delay-2">🌟</div>
+    <div class="absolute bottom-20 right-1/3 text-5xl float">💫</div>
+    
+    <div class="container mx-auto px-6 text-center relative z-10">
+      <h2 class="text-4xl md:text-6xl font-black text-white mb-8 drop-shadow-lg">
+        准备好了吗？
+      </h2>
+      <p class="text-2xl text-white mb-12 opacity-90">
+        让 AI 帮你的宝贝创造一个独一无二的故事！
+      </p>
+      
+      <a href="#" onclick="goToApp()" class="cta-button relative inline-block bg-white text-purple-600 text-3xl font-black px-16 py-6 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all">
+        🚀 开启创作之旅
+      </a>
+      
+      <p class="mt-8 text-white text-lg opacity-80">
+        完全免费 · 立即使用 · 无需注册也能体验
+      </p>
+    </div>
+  </section>
+
+  <!-- ========== 要素7: 页脚 ========== -->
+  <footer class="bg-purple-800 text-white py-12">
+    <div class="container mx-auto px-6">
+      <div class="text-center">
+        <!-- Logo -->
+        <div class="mb-6">
+          <span class="text-5xl">📖</span>
+          <span class="text-3xl font-black ml-2">Story Magic</span>
+        </div>
+        
+        <p class="text-purple-300 mb-6">
+          AI 儿童绘本创作坊 · 让每个孩子都能成为小作家
+        </p>
+        
+        <!-- 链接 -->
+        <div class="flex justify-center gap-8 mb-8">
+          <a href="#features" class="text-purple-300 hover:text-white transition-colors">功能介绍</a>
+          <a href="#how" class="text-purple-300 hover:text-white transition-colors">如何使用</a>
+          <a href="#about" class="text-purple-300 hover:text-white transition-colors">关于我们</a>
+        </div>
+        
+        <!-- 社交图标 -->
+        <div class="flex justify-center gap-6 mb-8">
+          <a href="#" class="text-3xl hover:scale-110 transition-transform">📧</a>
+          <a href="#" class="text-3xl hover:scale-110 transition-transform">💬</a>
+          <a href="#" class="text-3xl hover:scale-110 transition-transform">📱</a>
+        </div>
+        
+        <!-- 版权 -->
+        <div class="border-t border-purple-600 pt-6">
+          <p class="text-purple-400 text-sm">
+            © 2024 Story Magic. Made with ❤️ for kids.
+          </p>
+          <p class="text-purple-500 text-xs mt-2">
+            Powered by AI · Built with ❤️
+          </p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // 检查URL参数，如果是app模式则跳转到完整应用
+    if (window.location.pathname === '/app' || window.location.search.includes('app=true')) {
+      // 已经是应用模式
+    } else {
+      // 默认显示落地页
+    }
+    
+    function goToApp() {
+      // 跳转到应用页面
+      window.location.href = '/app';
+    }
+    
+    // 平滑滚动
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+  </script>
+</body>
 </html>

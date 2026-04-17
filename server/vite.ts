@@ -23,6 +23,8 @@ export async function setupViteMiddleware(app: Application) {
     appType: 'spa',
   });
 
+  const rootPath = process.cwd();
+
   // 确保 API 路由不被 Vite 处理
   app.use((req, res, next) => {
     if (req.url.startsWith('/api/')) {
@@ -33,6 +35,9 @@ export async function setupViteMiddleware(app: Application) {
     vite.middlewares(req, res, next);
   });
 
+  // 落地页处理（开发环境）
+  app.use('/', express.static(rootPath, { index: 'index.html' }));
+
   console.log('🚀 Vite dev server initialized');
 }
 
@@ -41,25 +46,37 @@ export async function setupViteMiddleware(app: Application) {
  */
 export function setupStaticServer(app: Application) {
   const distPath = path.resolve(process.cwd(), 'dist');
+  const rootPath = process.cwd();
 
   if (!fs.existsSync(distPath)) {
     console.error('❌ dist folder not found. Please run "pnpm build" first.');
     process.exit(1);
   }
 
-  // 1. 服务静态文件（如果存在对应文件则直接返回）
-  app.use(express.static(distPath));
+  // 1. 服务应用静态文件（/app 路径）
+  app.use('/app', express.static(distPath));
 
-  // 2. SPA fallback - 所有未处理的请求返回 index.html
-  // 到达这里的请求说明：
-  //   - 不是 API 请求（已被前面注册的路由处理）
-  //   - 不是静态文件（express.static 未找到对应文件）
-  //   - 需要返回 index.html 让前端路由处理
-  app.use((_req: Request, res: Response) => {
+  // 2. 落地页静态文件（/ 路径）
+  app.use(express.static(rootPath, {
+    index: 'index.html', // 根目录的落地页
+  }));
+
+  // 3. SPA fallback - /app/* 返回应用 index.html
+  app.use('/app', (_req: Request, res: Response) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 
-  console.log('📦 Serving static files from dist/');
+  // 4. 根路径返回落地页
+  app.use('/', (_req: Request, res: Response) => {
+    const landingPagePath = path.join(rootPath, 'index.html');
+    if (fs.existsSync(landingPagePath)) {
+      res.sendFile(landingPagePath);
+    } else {
+      res.sendFile(path.join(distPath, 'index.html'));
+    }
+  });
+
+  console.log('📦 Serving static files from dist/ and root/');
 }
 
 /**
