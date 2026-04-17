@@ -40,15 +40,17 @@ const languageConfig = {
 3. 故事篇幅控制在6页左右
 4. 每页文字不超过30个字，要简洁易懂
 5. 每页需要提供英文图片描述词（用于AI画图），风格是儿童绘本插画风格
+6. 故事中的主要角色（最多2个）要有详细的外观描述，这个描述必须保持一致地用在所有页面的图片描述中
 
 请按以下JSON格式输出：
 {
   "title": "故事标题",
+  "characterDescription": "主要角色的详细外观描述（英文，用于保持所有插图角色一致），例如：一只白色的小兔子，长长的耳朵，大大的眼睛，粉色的小鼻子，穿着蓝色的小衣服",
   "pages": [
     {
       "page": 1,
       "text": "这页的文字内容（中文，不超过30字）",
-      "imagePrompt": "英文的图片描述词，用于AI生成插图，风格是可爱温馨的儿童绘本插画风格"
+      "imagePrompt": "英文的图片描述词，必须包含角色外观描述，风格是可爱温馨的儿童绘本插画风格"
     }
   ]
 }`,
@@ -63,19 +65,21 @@ Requirements:
 3. Keep the story around 6 pages
 4. Each page should have no more than 30 words, be concise and easy to understand
 5. Each page needs English image description prompts (for AI drawing), in children's picture book illustration style
+6. Main characters (max 2) must have detailed appearance descriptions that remain CONSISTENT across ALL pages
 
 Please output in the following JSON format:
 {
   "title": "Story Title",
+  "characterDescription": "Detailed appearance description of main characters in English (for maintaining character consistency across all illustrations), e.g.: A cute white rabbit with long ears, big eyes, pink nose, wearing a blue outfit",
   "pages": [
     {
       "page": 1,
       "text": "The text content of this page (in English, no more than 30 words)",
-      "imagePrompt": "English image description for AI illustration, cute and warm children's picture book style"
+      "imagePrompt": "English image description that MUST include the character appearance description, in cute and warm children's picture book style"
     }
   ]
 }`,
-    speaker: 'zh_female_vv_uranus_bigtts', // 中英双语声音
+    speaker: 'en_us_male_cubic_bigtts', // 英文声音
   }
 };
 
@@ -145,12 +149,20 @@ router.post('/api/story/generate-illustrations', async (req: Request, res: Respo
     // 逐页生成插图
     const updatedPages: StoryPage[] = [];
     
+    // 获取角色描述（用于保持角色一致性）
+    const characterDescription = story.characterDescription || '';
+    
     for (const page of story.pages) {
       try {
         console.log(`正在生成第 ${page.page} 页插图...`);
         
         // 增强图片提示词，使其更适合儿童绘本
-        const enhancedPrompt = `${page.imagePrompt}, children's book illustration style, cute, colorful, warm, soft lighting, hand-drawn style, watercolor effect, adorable characters, pastel colors, whimsical, enchanting atmosphere`;
+        // 关键：将角色描述放在最前面，确保角色一致性
+        const basePrompt = characterDescription 
+          ? `${characterDescription}, ${page.imagePrompt}` 
+          : page.imagePrompt;
+        
+        const enhancedPrompt = `${basePrompt}, children's book illustration style, cute, colorful, warm, soft lighting, hand-drawn style, watercolor effect, adorable characters, pastel colors, whimsical, enchanting atmosphere`;
 
         const response = await client.generate({
           prompt: enhancedPrompt,
@@ -404,7 +416,7 @@ router.post('/api/story/generate-video', async (req: Request, res: Response) => 
   }
 });
 
-// 🎬 批量生成视频（为故事每页生成视频）
+// 🎬 批量生成视频（为故事每页生成视频，支持尾帧继承实现角色一致性）
 router.post('/api/story/generate-story-videos', async (req: Request, res: Response) => {
   try {
     const { story } = req.body;
@@ -420,6 +432,9 @@ router.post('/api/story/generate-story-videos', async (req: Request, res: Respon
 
     const updatedPages: StoryPage[] = [];
     
+    // 关键：尾帧继承策略 - 上一段视频的尾帧作为下一段的首帧
+    let lastFrameUrl: string | null = null;
+    
     for (const page of story.pages) {
       if (!page.imageUrl) {
         updatedPages.push({ ...page, videoUrl: '' });
@@ -428,21 +443,56 @@ router.post('/api/story/generate-story-videos', async (req: Request, res: Respon
 
       try {
         console.log(`正在生成第 ${page.page} 页视频...`);
-
-        const response = await client.generate({
-          prompt: `A gentle animation of the picture book scene: "${page.text}". Soft movements like a living storybook. Warm and magical atmosphere.`,
-          prompt_en: `A gentle animation of the picture book scene: "${page.text}". Soft movements like a living storybook. Warm and magical atmosphere.`,
-          image_url: page.imageUrl,
-          duration: 5,
-          resolution: '720p',
-          fps: 24,
+        
+        // 构建视频生成的内容数组
+        // 如果有上一段的尾帧，将其作为首帧输入，实现视觉连贯性
+        const contentItems: any[] = [];
+        
+        if (lastFrameUrl) {
+          // 使用上一段的尾帧作为首帧（首帧继承策略）
+          contentItems.push({
+            type: 'image_url' as const,
+            image_url: {
+              url: lastFrameUrl,
+            },
+            role: 'first_frame' as const,
+          });
+        }
+        
+        // 添加当前页的插图
+        contentItems.push({
+          type: 'image_url' as const,
+          image_url: {
+            url: page.imageUrl,
+          },
+          role: 'first_frame' as const,
+        });
+        
+        // 添加动画描述
+        contentItems.push({
+          type: 'text' as const,
+          text: `A gentle animation of the picture book scene: "${page.text}". Soft movements like a living storybook. Characters maintain consistent appearance, subtle motions - gentle breathing, blinking eyes, swaying gently. Warm and magical atmosphere.`,
         });
 
-        const helper = client.getResponseHelper(response);
+        // 使用 videoGeneration 方法（支持尾帧返回）
+        const response = await client.videoGeneration(contentItems, {
+          model: 'doubao-seedance-1-5-pro-251215',
+          duration: 5,
+          resolution: '720p',
+          ratio: '16:9',
+          returnLastFrame: true, // 关键：返回尾帧用于下一段视频
+          generateAudio: true, // 生成音效
+          camerafixed: false, // 允许镜头轻微移动
+        });
+
+        // 获取尾帧 URL（用于下一段视频的首帧）
+        if (response.lastFrameUrl) {
+          lastFrameUrl = response.lastFrameUrl;
+        }
 
         updatedPages.push({
           ...page,
-          videoUrl: helper.success && helper.videoUrl ? helper.videoUrl : '',
+          videoUrl: response.videoUrl || '',
         });
 
         // 添加延迟避免请求过快
