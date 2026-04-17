@@ -621,12 +621,6 @@ function updatePage(): void {
     if (pageIndicator && currentStory) {
       pageIndicator.textContent = `${currentLanguage === 'zh' ? '第' : 'Page'} ${currentPage + 1} / ${currentStory.pages.length}`;
     }
-    
-    // 如果当前页没有图片，尝试生成
-    const page = currentStory?.pages[currentPage];
-    if (page && !page.imageUrl && !isGeneratingImages) {
-      generateCurrentPageIllustration();
-    }
   }
 }
 
