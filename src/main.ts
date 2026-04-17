@@ -32,9 +32,41 @@ let currentPage = 0;
 let generatedImages: ImageResult[] = [];
 let currentMode: 'generate' | 'illustrate' = 'generate';
 let currentLanguage: 'zh' | 'en' = 'zh';
+let currentUser: { id: string; email: string } | null = null;
+
+// 检查登录状态
+async function checkAuth(): Promise<void> {
+  const token = localStorage.getItem('auth_token');
+  if (!token) {
+    currentUser = null;
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/story/auth/user', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      currentUser = data.user;
+    } else {
+      currentUser = null;
+      localStorage.removeItem('auth_token');
+    }
+  } catch {
+    currentUser = null;
+    localStorage.removeItem('auth_token');
+  }
+}
 
 // 初始化应用
-function initApp(): void {
+async function initApp(): Promise<void> {
+  // 检查登录状态
+  await checkAuth();
+
   const app = document.getElementById('app');
   if (!app) return;
 
@@ -49,10 +81,29 @@ function render(container: HTMLElement): void {
       <!-- 顶部标题 -->
       <header class="bg-white/80 backdrop-blur-sm shadow-lg">
         <div class="max-w-6xl mx-auto px-6 py-8">
-          <h1 class="text-4xl font-bold text-center bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 bg-clip-text text-transparent">
-            📚 AI 绘本创作坊
-          </h1>
-          <p class="text-center text-gray-500 mt-2">输入故事，AI 为你画插图</p>
+          <div class="flex justify-between items-center">
+            <div class="flex-1">
+              <h1 class="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 bg-clip-text text-transparent">
+                📚 AI 绘本创作坊
+              </h1>
+              <p class="text-center text-gray-500 mt-2">输入故事，AI 为你画插图</p>
+            </div>
+            <!-- 用户按钮 -->
+            <div id="user-section">
+              ${currentUser ? `
+                <div class="flex items-center gap-3">
+                  <span class="text-gray-600">👤 ${currentUser.email}</span>
+                  <button id="logout-btn" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors">
+                    退出
+                  </button>
+                </div>
+              ` : `
+                <button id="login-btn" class="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors shadow-lg">
+                  登录 / 注册
+                </button>
+              `}
+            </div>
+          </div>
           
           <!-- 功能切换 -->
           <div class="flex justify-center gap-4 mt-6">
@@ -65,6 +116,42 @@ function render(container: HTMLElement): void {
           </div>
         </div>
       </header>
+
+      <!-- 登录模态框 -->
+      <div id="auth-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-8">
+          <div class="flex justify-between items-center mb-6">
+            <h2 id="auth-title" class="text-2xl font-bold text-gray-800">登录</h2>
+            <button id="close-auth" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+          </div>
+          
+          <form id="auth-form" class="space-y-4">
+            <div>
+              <label class="block text-gray-700 mb-2">邮箱</label>
+              <input type="email" id="auth-email" required class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none" placeholder="your@email.com">
+            </div>
+            <div>
+              <label class="block text-gray-700 mb-2">密码</label>
+              <input type="password" id="auth-password" required class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none" placeholder="••••••••" minlength="6">
+            </div>
+            <div id="username-field" class="hidden">
+              <label class="block text-gray-700 mb-2">用户名（选填）</label>
+              <input type="text" id="auth-username" class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none" placeholder="小明的妈妈">
+            </div>
+            <div id="auth-error" class="text-red-500 text-sm hidden"></div>
+            <button type="submit" id="auth-submit" class="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors">
+              登录
+            </button>
+          </form>
+          
+          <div class="mt-4 text-center">
+            <span class="text-gray-500">还没有账号？</span>
+            <button id="switch-auth-mode" class="text-purple-500 hover:text-purple-600 font-medium ml-1">
+              立即注册
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- 主内容区 -->
       <main class="max-w-6xl mx-auto px-6 py-12">
@@ -458,12 +545,178 @@ function bindEvents(): void {
     });
   });
 
+  // 登录按钮
+  const loginBtn = document.getElementById('login-btn');
+  loginBtn?.addEventListener('click', () => {
+    showAuthModal();
+  });
+
+  // 退出按钮
+  const logoutBtn = document.getElementById('logout-btn');
+  logoutBtn?.addEventListener('click', async () => {
+    await logout();
+  });
+
+  // 关闭模态框
+  const closeAuth = document.getElementById('close-auth');
+  closeAuth?.addEventListener('click', () => {
+    hideAuthModal();
+  });
+
+  // 切换登录/注册模式
+  const switchAuthMode = document.getElementById('switch-auth-mode');
+  switchAuthMode?.addEventListener('click', () => {
+    toggleAuthMode();
+  });
+
+  // 提交表单
+  const authForm = document.getElementById('auth-form');
+  authForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await handleAuthSubmit();
+  });
+
   // 故事创作模式事件
   if (currentMode === 'generate') {
     bindGenerateModeEvents();
   } else {
     bindIllustrateModeEvents();
   }
+}
+
+// 登录模态框控制
+let isLoginMode = true;
+
+function showAuthModal(): void {
+  const modal = document.getElementById('auth-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    updateAuthUI();
+  }
+}
+
+function hideAuthModal(): void {
+  const modal = document.getElementById('auth-modal');
+  const errorDiv = document.getElementById('auth-error');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+  if (errorDiv) {
+    errorDiv.classList.add('hidden');
+    errorDiv.textContent = '';
+  }
+}
+
+function toggleAuthMode(): void {
+  isLoginMode = !isLoginMode;
+  updateAuthUI();
+}
+
+function updateAuthUI(): void {
+  const title = document.getElementById('auth-title');
+  const submitBtn = document.getElementById('auth-submit');
+  const usernameField = document.getElementById('username-field');
+  const switchBtn = document.getElementById('switch-auth-mode');
+
+  if (title) {
+    title.textContent = isLoginMode ? '登录' : '注册';
+  }
+  if (submitBtn) {
+    submitBtn.textContent = isLoginMode ? '登录' : '注册';
+  }
+  if (usernameField) {
+    usernameField.classList.toggle('hidden', isLoginMode);
+  }
+  if (switchBtn) {
+    switchBtn.textContent = isLoginMode ? '立即注册' : '已有账号？登录';
+  }
+}
+
+async function handleAuthSubmit(): Promise<void> {
+  const emailInput = document.getElementById('auth-email') as HTMLInputElement;
+  const passwordInput = document.getElementById('auth-password') as HTMLInputElement;
+  const usernameInput = document.getElementById('auth-username') as HTMLInputElement;
+  const errorDiv = document.getElementById('auth-error');
+  const submitBtn = document.getElementById('auth-submit');
+
+  const email = emailInput?.value.trim();
+  const password = passwordInput?.value;
+  const username = usernameInput?.value.trim();
+
+  if (!email || !password) {
+    if (errorDiv) {
+      errorDiv.textContent = '请填写邮箱和密码';
+      errorDiv.classList.remove('hidden');
+    }
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.textContent = '处理中...';
+    submitBtn.setAttribute('disabled', 'true');
+  }
+
+  try {
+    const endpoint = isLoginMode ? '/api/story/auth/login' : '/api/story/auth/signup';
+    const body: Record<string, string> = { email, password };
+    if (!isLoginMode && username) {
+      body.username = username;
+    }
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || '操作失败');
+    }
+
+    if (isLoginMode) {
+      // 保存 token
+      localStorage.setItem('auth_token', data.session?.access_token || '');
+      currentUser = data.user;
+    } else {
+      // 注册成功，提示用户查收邮件
+      alert('注册成功！请查收验证邮件完成注册。');
+    }
+
+    hideAuthModal();
+    // 刷新界面
+    const app = document.getElementById('app');
+    if (app) render(app);
+    bindEvents();
+  } catch (error) {
+    if (errorDiv) {
+      errorDiv.textContent = error instanceof Error ? error.message : '操作失败';
+      errorDiv.classList.remove('hidden');
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.textContent = isLoginMode ? '登录' : '注册';
+      submitBtn.removeAttribute('disabled');
+    }
+  }
+}
+
+async function logout(): Promise<void> {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    await fetch('/api/story/auth/logout', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  }
+  localStorage.removeItem('auth_token');
+  currentUser = null;
+  const app = document.getElementById('app');
+  if (app) render(app);
+  bindEvents();
 }
 
 // 绑定创作模式事件

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { LLMClient, Config, HeaderUtils, ImageGenerationClient, VideoGenerationClient, TTSClient } from 'coze-coding-dev-sdk';
+import { getSupabaseClient } from '../src/storage/database/supabase-client';
 
 const router = Router();
 
@@ -28,6 +29,126 @@ interface Story {
   title: string;
   pages: StoryPage[];
 }
+
+// ==================== 用户认证 API ====================
+
+// 用户注册
+router.post('/auth/signup', async (req: Request, res: Response) => {
+  try {
+    const { email, password, username } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: '邮箱和密码不能为空' });
+    }
+
+    const client = getSupabaseClient();
+
+    // 使用 Supabase Auth 注册
+    const { data, error } = await client.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          username: username || email.split('@')[0]
+        }
+      }
+    });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json({
+      success: true,
+      user: data.user,
+      message: '注册成功'
+    });
+  } catch (error) {
+    console.error('注册失败:', error);
+    return res.status(500).json({ error: '注册失败，请重试' });
+  }
+});
+
+// 用户登录
+router.post('/auth/login', async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: '邮箱和密码不能为空' });
+    }
+
+    const client = getSupabaseClient();
+
+    // 使用 Supabase Auth 登录
+    const { data, error } = await client.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      return res.status(401).json({ error: '邮箱或密码错误' });
+    }
+
+    return res.json({
+      success: true,
+      user: data.user,
+      session: data.session
+    });
+  } catch (error) {
+    console.error('登录失败:', error);
+    return res.status(500).json({ error: '登录失败，请重试' });
+  }
+});
+
+// 获取当前用户信息
+router.get('/auth/user', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: '未登录' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const client = getSupabaseClient(token);
+
+    const { data, error } = await client.auth.getUser();
+
+    if (error) {
+      return res.status(401).json({ error: '登录已过期' });
+    }
+
+    return res.json({
+      success: true,
+      user: data.user
+    });
+  } catch (error) {
+    console.error('获取用户信息失败:', error);
+    return res.status(500).json({ error: '获取用户信息失败' });
+  }
+});
+
+// 用户登出
+router.post('/auth/logout', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const client = getSupabaseClient(token);
+      await client.auth.signOut();
+    }
+
+    return res.json({
+      success: true,
+      message: '已退出登录'
+    });
+  } catch (error) {
+    console.error('登出失败:', error);
+    return res.status(500).json({ error: '登出失败' });
+  }
+});
 
 // 语言配置
 const languageConfig = {

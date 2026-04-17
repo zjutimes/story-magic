@@ -58,6 +58,37 @@
 | **大脑积木** | 视频生成 | `VideoGenerationClient` from `coze-coding-dev-sdk` |
 | **大脑积木** | 语音合成 (TTS) | `TTSClient` from `coze-coding-dev-sdk` |
 
+## 用户认证
+
+本项目使用 Supabase Auth 进行用户认证。
+
+### 认证 API
+
+| 接口 | 方法 | 功能 |
+|-----|------|------|
+| `/api/story/auth/signup` | POST | 用户注册 |
+| `/api/story/auth/login` | POST | 用户登录 |
+| `/api/story/auth/user` | GET | 获取当前用户信息 |
+| `/api/story/auth/logout` | POST | 用户登出 |
+
+### 认证使用示例
+
+```typescript
+import { getSupabaseClient } from '@/storage/database/supabase-client';
+
+// 登录
+const { data, error } = await client.auth.signInWithPassword({
+  email: 'user@example.com',
+  password: 'password123'
+});
+
+// 获取用户信息
+const { data: { user } } = await client.auth.getUser();
+
+// 登出
+await client.auth.signOut();
+```
+
 ### LLM 使用示例
 
 ```typescript

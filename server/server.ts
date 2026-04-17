@@ -30,8 +30,8 @@ async function startServer(): Promise<Server> {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // 注册 API 路由
-  app.use(router);
+  // 注册 API 路由（添加 /api/story 前缀）
+  app.use('/api/story', router);
 
   // 集成 Vite（开发模式）或静态文件服务（生产模式）
   await setupVite(app);
