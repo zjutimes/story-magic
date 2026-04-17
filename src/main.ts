@@ -610,7 +610,8 @@ function bindIllustrateModeEvents(): void {
 
 // 更新页面显示
 function updatePage(): void {
-  const container = document.querySelector('.bg-white.rounded-3xl');
+  // 查找绘本展示区的容器（更精确的选择器）
+  const container = document.querySelector('.bg-white.rounded-3xl.overflow-hidden');
   if (container) {
     container.innerHTML = renderCurrentPage();
     
