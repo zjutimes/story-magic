@@ -1,5 +1,5 @@
 import './index.css';
-import { initApp } from './main';
+import './main';
 
 // Initialize the application
-initApp();
+(window as unknown as { initApp: () => void }).initApp();

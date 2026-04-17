@@ -44,3 +44,59 @@
 
 - 默认按 TypeScript `strict` 心智写代码；优先复用当前作用域已声明的变量、函数、类型和导入，禁止引用未声明标识符或拼错变量名。
 - 禁止隐式 `any` 和 `as any`；函数参数、返回值、解构项、事件对象、Express `req`/`res`、`catch` 错误在使用前应有明确类型或先完成类型收窄，并清理未使用的变量和导入。
+
+## AI 积木能力
+
+本项目使用 `coze-coding-dev-sdk` 提供 AI 能力，集成在服务端（Express）。
+
+### 可用积木
+
+| 积木类型 | 能力 | 使用方式 |
+|---------|------|---------|
+| **大脑积木** | LLM（对话/生成） | `LLMClient` from `coze-coding-dev-sdk` |
+| **大脑积木** | 图片生成 | `ImageGenerationClient` from `coze-coding-dev-sdk` |
+
+### LLM 使用示例
+
+```typescript
+import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
+
+// 初始化
+const config = new Config();
+const client = new LLMClient(config);
+
+// 调用
+const messages = [{ role: 'user' as const, content: '你的问题' }];
+const response = await client.invoke(messages, { 
+  model: 'doubao-seed-1-6-251015',
+  temperature: 0.8 
+});
+```
+
+### 图片生成使用示例
+
+```typescript
+import { ImageGenerationClient, Config } from 'coze-coding-dev-sdk';
+
+// 初始化
+const config = new Config();
+const client = new ImageGenerationClient(config);
+
+// 生成图片
+const response = await client.generate({
+  prompt: '儿童绘本风格的可爱插图',
+  size: '2K',
+});
+
+const helper = client.getResponseHelper(response);
+if (helper.success) {
+  const imageUrl = helper.imageUrls[0];
+}
+```
+
+## API 接口
+
+| 接口 | 方法 | 功能 |
+|-----|------|------|
+| `/api/story/generate` | POST | 生成儿童故事内容 |
+| `/api/story/generate-illustrations` | POST | 为故事生成配套插图 |
