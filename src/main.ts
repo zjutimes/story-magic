@@ -355,15 +355,20 @@ function renderCurrentPage(): string {
       <div class="aspect-[4/3] bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center overflow-hidden">
         ${page.imageUrl ? `
           <img src="${page.imageUrl}" alt="第${page.page}页插图" class="w-full h-full object-cover" />
-        ` : isLoading ? `
-          <div class="text-center">
-            <div class="animate-spin h-12 w-12 mx-auto mb-4 border-4 border-purple-200 border-t-purple-500 rounded-full"></div>
-            <p class="text-gray-500">${currentLanguage === 'zh' ? '正在为你画插图...' : 'Generating illustration...'}</p>
+        ` : (isLoading || isGeneratingImages) ? `
+          <div class="text-center p-8">
+            <div class="animate-pulse flex flex-col items-center">
+              <div class="bg-gradient-to-br from-purple-200 via-pink-200 to-blue-200 rounded-xl w-full h-48 mb-4 flex items-center justify-center">
+                <span class="text-4xl animate-bounce">🎨</span>
+              </div>
+              <p class="text-purple-600 font-medium">${currentLanguage === 'zh' ? '正在生成第' + page.page + '张插图...' : 'Generating illustration ' + page.page + '...'}</p>
+              <p class="text-xs text-gray-400 mt-1">${currentLanguage === 'zh' ? 'AI 正在发挥创意' : 'AI is being creative'}</p>
+            </div>
           </div>
         ` : `
-          <div class="text-center text-gray-400">
+          <div class="text-center text-gray-400 p-8">
             <div class="text-6xl mb-4">🖼️</div>
-            <p>${currentLanguage === 'zh' ? '暂无插图' : 'No illustration yet'}</p>
+            <p class="text-sm">${currentLanguage === 'zh' ? '点击下方按钮生成插图' : 'Click button below to generate'}</p>
           </div>
         `}
         

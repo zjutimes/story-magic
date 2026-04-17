@@ -147,53 +147,45 @@ router.post('/api/story/generate-illustrations', async (req: Request, res: Respo
       return;
     }
 
-    // 逐页生成插图
-    const updatedPages: StoryPage[] = [];
-    
     // 获取角色描述（用于保持角色一致性）
     const characterDescription = story.characterDescription || '';
-    
-    for (const page of story.pages) {
+    const updatedPages: StoryPage[] = [];
+
+    // 并行生成所有插图（提高速度）
+    const generatePageImage = async (page: StoryPage): Promise<StoryPage> => {
       try {
         console.log(`正在生成第 ${page.page} 页插图...`);
         
-        // 增强图片提示词，使其更适合儿童绘本
-        // 关键：将角色描述放在最前面，确保角色一致性
+        // 增强图片提示词
         const basePrompt = characterDescription 
           ? `${characterDescription}, ${page.imagePrompt}` 
           : page.imagePrompt;
         
-        const enhancedPrompt = `${basePrompt}, children's book illustration style, cute, colorful, warm, soft lighting, hand-drawn style, watercolor effect, adorable characters, pastel colors, whimsical, enchanting atmosphere`;
+        const enhancedPrompt = `${basePrompt}, children's book illustration, cute, colorful, warm, soft lighting, watercolor effect, pastel colors`;
 
         const response = await client.generate({
           prompt: enhancedPrompt,
-          size: '2K',
+          size: '1K', // 使用 1K 尺寸加快生成速度
         });
 
         const helper = client.getResponseHelper(response);
 
         if (helper.success && helper.imageUrls.length > 0) {
-          updatedPages.push({
-            ...page,
-            imageUrl: helper.imageUrls[0],
-          });
-        } else {
-          // 如果图片生成失败，仍保留页面内容
-          updatedPages.push({
-            ...page,
-            imageUrl: '',
-          });
+          return { ...page, imageUrl: helper.imageUrls[0] };
         }
-
-        // 添加短暂延迟，避免请求过快
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (imgError) {
-        console.error(`生成第 ${page.page} 页插图失败:`, imgError);
-        updatedPages.push({
-          ...page,
-          imageUrl: '',
-        });
+        return { ...page, imageUrl: '' };
+      } catch (error) {
+        console.error(`第 ${page.page} 页插图生成失败:`, error);
+        return { ...page, imageUrl: '' };
       }
+    };
+
+    // 并行处理所有页面（最多同时3个，避免API限制）
+    const chunkSize = 3;
+    for (let i = 0; i < story.pages.length; i += chunkSize) {
+      const chunk = story.pages.slice(i, i + chunkSize);
+      const results = await Promise.all(chunk.map(generatePageImage));
+      updatedPages.push(...results);
     }
 
     res.json({ 
