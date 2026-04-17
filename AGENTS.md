@@ -105,19 +105,32 @@ import { VideoGenerationClient, Config } from 'coze-coding-dev-sdk';
 const config = new Config();
 const client = new VideoGenerationClient(config);
 
+// 构建内容：图片作为首帧 + 文字描述动画效果
+const contentItems = [
+  {
+    type: 'image_url' as const,
+    image_url: { url: imageUrl },
+    role: 'first_frame' as const,
+  },
+  {
+    type: 'text' as const,
+    text: 'A gentle animation. Soft camera movement, warm lighting transitions.',
+  },
+];
+
 // 生成视频
-const response = await client.generate({
-  prompt: '温柔的故事动画效果',
-  prompt_en: 'Gentle story animation effect',
-  image_url: 'https://example.com/image.jpg',
+const response = await client.videoGeneration(contentItems, {
+  model: 'doubao-seedance-1-5-pro-251215',
   duration: 5,
   resolution: '720p',
-  fps: 24,
+  ratio: '4:3',
+  returnLastFrame: true, // 返回尾帧用于下一段视频
+  generateAudio: true,   // 生成音效
 });
 
-const helper = client.getResponseHelper(response);
-if (helper.success) {
-  const videoUrl = helper.videoUrl;
+if (response.videoUrl) {
+  const videoUrl = response.videoUrl;
+  const lastFrameUrl = response.lastFrameUrl; // 尾帧
 }
 ```
 
@@ -131,14 +144,16 @@ const config = new Config();
 const client = new TTSClient(config);
 
 // 文字转语音
-const response = await client.textToSpeech({
+const response = await client.synthesize({
+  uid: `story_${Date.now()}`,
   text: '故事文字内容',
-  stream: false, // 返回URL模式
+  speaker: 'zh_female_xueayi_saturn_bigtts', // 儿童有声书风格
+  audioFormat: 'mp3',
+  sampleRate: 24000,
 });
 
-const helper = client.getResponseHelper(response);
-if (helper.success) {
-  const audioUrl = helper.audioUrl;
+if (response.audioUri) {
+  const audioUrl = response.audioUri;
 }
 ```
 

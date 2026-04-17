@@ -128,7 +128,8 @@ router.post('/api/story/generate', async (req: Request, res: Response) => {
     res.json({ success: true, story, language });
   } catch (error) {
     console.error('生成故事失败:', error);
-    res.status(500).json({ error: language === 'en' ? 'Story generation failed' : '生成故事失败' });
+    const errorLang = req.body.language || 'zh';
+    res.status(500).json({ error: errorLang === 'en' ? 'Story generation failed' : '生成故事失败' });
   }
 });
 
@@ -386,28 +387,40 @@ router.post('/api/story/generate-video', async (req: Request, res: Response) => 
 
     console.log('正在生成视频，图片URL:', imageUrl);
 
+    // 构建内容：图片作为首帧 + 文字描述动画效果
+    const contentItems = [
+      {
+        type: 'image_url' as const,
+        image_url: { url: imageUrl },
+        role: 'first_frame' as const,
+      },
+      {
+        type: 'text' as const,
+        text: 'A gentle, magical animation. Soft camera movement, warm lighting transitions, subtle motion in the characters - a gentle sway, a sparkle of magic, breathing effect.',
+      },
+    ];
+
     // 生成视频
-    const response = await client.generate({
-      prompt: 'A gentle, magical animation of this picture book scene. Soft camera movement, like slowly turning the pages of a picture book. Warm lighting transitions, subtle motion in the characters - a gentle sway, a sparkle of magic, breathing effect. Like a story coming to life.',
-      prompt_en: 'A gentle, magical animation of this picture book scene. Soft camera movement, like slowly turning the pages of a picture book. Warm lighting transitions, subtle motion in the characters - a gentle sway, a sparkle of magic, breathing effect. Like a story coming to life.',
-      image_url: imageUrl,
+    const response = await client.videoGeneration(contentItems, {
+      model: 'doubao-seedance-1-5-pro-251215',
       duration: 5,
       resolution: '720p',
-      fps: 24,
+      ratio: '4:3',
+      returnLastFrame: true,
+      generateAudio: true,
     });
 
-    const helper = client.getResponseHelper(response);
-
-    if (helper.success && helper.videoUrl) {
+    if (response.videoUrl) {
       res.json({ 
         success: true, 
-        videoUrl: helper.videoUrl,
+        videoUrl: response.videoUrl,
+        lastFrameUrl: response.lastFrameUrl || null,
         message: '视频生成成功！' 
       });
     } else {
       res.status(500).json({ 
         error: '视频生成失败',
-        details: helper.errorMessages 
+        details: response.response?.error_message || '未知错误' 
       });
     }
   } catch (error) {
@@ -535,24 +548,31 @@ router.post('/api/story/text-to-speech', async (req: Request, res:Response) => {
 
     console.log('正在生成语音，文字:', text.substring(0, 50), '...');
 
+    // 选择语音：根据语言选择儿童有声书风格的声音
+    const speaker = language === 'zh' 
+      ? 'zh_female_xueayi_saturn_bigtts' // 儿童有声书
+      : 'zh_female_vv_uranus_bigtts';    // 中英双语
+
     // 生成语音
-    const response = await client.textToSpeech({
+    const response = await client.synthesize({
+      uid: `story_${Date.now()}`,
       text: text,
-      stream: false, // 返回URL模式
+      speaker: speaker,
+      audioFormat: 'mp3',
+      sampleRate: 24000,
+      speechRate: 0, // 正常语速
     });
 
-    const helper = client.getResponseHelper(response);
-
-    if (helper.success && helper.audioUrl) {
+    if (response.audioUri) {
       res.json({ 
         success: true, 
-        audioUrl: helper.audioUrl,
+        audioUrl: response.audioUri,
         message: '语音生成成功！' 
       });
     } else {
       res.status(500).json({ 
         error: '语音生成失败',
-        details: helper.errorMessages 
+        details: '未获取到音频URL' 
       });
     }
   } catch (error) {
@@ -575,22 +595,29 @@ router.post('/api/story/generate-story-audio', async (req: Request, res: Respons
     // 初始化 TTS 客户端
     const client = new TTSClient(ttsConfig, customHeaders);
 
+    // 选择语音：根据语言选择儿童有声书风格的声音
+    const speaker = language === 'zh' 
+      ? 'zh_female_xueayi_saturn_bigtts' // 儿童有声书
+      : 'zh_female_vv_uranus_bigtts';    // 中英双语
+
     const updatedPages: StoryPage[] = [];
     
     for (const page of story.pages) {
       try {
         console.log(`正在生成第 ${page.page} 页语音...`);
 
-        const response = await client.textToSpeech({
+        const response = await client.synthesize({
+          uid: `story_page_${page.page}_${Date.now()}`,
           text: page.text,
-          stream: false,
+          speaker: speaker,
+          audioFormat: 'mp3',
+          sampleRate: 24000,
+          speechRate: 0, // 正常语速
         });
-
-        const helper = client.getResponseHelper(response);
 
         updatedPages.push({
           ...page,
-          audioUrl: helper.success && helper.audioUrl ? helper.audioUrl : '',
+          audioUrl: response.audioUri || '',
         });
 
         // 添加延迟避免请求过快

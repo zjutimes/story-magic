@@ -6,6 +6,8 @@ interface StoryPage {
   text: string;
   imagePrompt: string;
   imageUrl?: string;
+  videoUrl?: string;
+  audioUrl?: string;
 }
 
 interface Story {
@@ -24,9 +26,12 @@ interface ImageResult {
 // 状态管理
 let currentStory: Story | null = null;
 let isGeneratingImages = false;
+let isGeneratingVideos = false;
+let isGeneratingAudio = false;
 let currentPage = 0;
 let generatedImages: ImageResult[] = [];
 let currentMode: 'generate' | 'illustrate' = 'generate';
+let currentLanguage: 'zh' | 'en' = 'zh';
 
 // 初始化应用
 function initApp(): void {
@@ -212,21 +217,34 @@ function renderInputSection(): string {
       </h2>
       
       <div class="space-y-6">
+        <!-- 语言切换 -->
+        <div class="flex items-center justify-between">
+          <label class="text-gray-700 font-medium">选择语言</label>
+          <div class="flex gap-2">
+            <button id="lang-zh" class="lang-btn px-4 py-2 rounded-full font-medium transition-all ${currentLanguage === 'zh' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}" data-lang="zh">
+              🇨🇳 中文
+            </button>
+            <button id="lang-en" class="lang-btn px-4 py-2 rounded-full font-medium transition-all ${currentLanguage === 'en' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}" data-lang="en">
+              🇺🇸 English
+            </button>
+          </div>
+        </div>
+        
         <div>
           <label class="block text-gray-700 font-medium mb-2">故事主题</label>
           <input 
             type="text" 
             id="story-theme" 
-            placeholder="例如：小兔子学勇敢、小熊学分享、外星人访地球..."
+            placeholder="${currentLanguage === 'zh' ? '例如：小兔子学勇敢、小熊学分享、外星人访地球...' : 'e.g., Little Rabbit learns courage, Bear shares food, Alien visits Earth...'}"
             class="w-full px-6 py-4 rounded-2xl border-2 border-purple-200 focus:border-purple-400 focus:ring-4 focus:ring-purple-100 outline-none transition-all text-lg"
           />
         </div>
         
         <!-- 示例主题 -->
         <div class="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl p-6">
-          <p class="text-gray-600 font-medium mb-3">💡 试试这些主题：</p>
+          <p class="text-gray-600 font-medium mb-3">💡 ${currentLanguage === 'zh' ? '试试这些主题：' : 'Try these themes:'}</p>
           <div class="flex flex-wrap gap-2">
-            ${['小兔子去上学', '星星找朋友', '大树的秘密', '彩虹桥'].map(theme => `
+            ${(currentLanguage === 'zh' ? ['小兔子去上学', '星星找朋友', '大树的秘密', '彩虹桥'] : ['Little Rabbit goes to school', 'Stars make friends', 'The secret of the big tree', 'Rainbow bridge']).map(theme => `
               <button class="example-theme px-4 py-2 bg-white rounded-full text-purple-600 hover:bg-purple-100 transition-colors border border-purple-200 text-sm font-medium cursor-pointer" data-theme="${theme}">
                 ${theme}
               </button>
@@ -235,7 +253,7 @@ function renderInputSection(): string {
         </div>
         
         <button id="generate-btn" class="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-semibold text-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-3">
-          <span id="generate-btn-text">✨ 开始创作</span>
+          <span id="generate-btn-text">${currentLanguage === 'zh' ? '✨ 开始创作' : '✨ Start Creating'}</span>
           <span id="generate-spinner" class="hidden">
             <svg class="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -249,9 +267,9 @@ function renderInputSection(): string {
     <!-- 功能说明 -->
     <div class="grid md:grid-cols-3 gap-6">
       ${[
-        { icon: '💭', title: 'AI 创作故事', desc: '智能生成温馨有趣的情节' },
-        { icon: '🎨', title: '自动画插图', desc: '每页配有精美插画' },
-        { icon: '📖', title: '完整绘本', desc: '可翻页阅读的互动体验' },
+        { icon: '💭', title: currentLanguage === 'zh' ? 'AI 创作故事' : 'AI Creates Story', desc: currentLanguage === 'zh' ? '智能生成温馨有趣的情节' : 'Smart generation of warm stories' },
+        { icon: '🎨', title: currentLanguage === 'zh' ? '自动画插图' : 'Auto Illustration', desc: currentLanguage === 'zh' ? '每页配有精美插画' : 'Beautiful illustrations for each page' },
+        { icon: '🎬', title: currentLanguage === 'zh' ? '生成动画视频' : 'Generate Video', desc: currentLanguage === 'zh' ? '插图变动画' : 'Turn illustrations into animations' },
       ].map(item => `
         <div class="bg-white rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition-shadow">
           <div class="text-4xl mb-3">${item.icon}</div>
@@ -270,13 +288,34 @@ function renderStorySection(): string {
   return `
     <!-- 返回按钮 -->
     <button id="back-btn" class="mb-6 flex items-center gap-2 text-purple-600 hover:text-purple-700 font-medium transition-colors">
-      <span class="text-xl">←</span> 创作新故事
+      <span class="text-xl">←</span> ${currentLanguage === 'zh' ? '创作新故事' : 'Create New Story'}
     </button>
     
     <!-- 故事标题 -->
     <div class="text-center mb-8">
       <h2 class="text-4xl font-bold text-gray-800 mb-2">${currentStory.title}</h2>
-      <p class="text-gray-500">点击翻页阅读完整故事</p>
+      <p class="text-gray-500">${currentLanguage === 'zh' ? '点击翻页阅读完整故事' : 'Flip pages to read the full story'}</p>
+    </div>
+    
+    <!-- 操作按钮区 -->
+    <div class="flex flex-wrap justify-center gap-3 mb-8">
+      <!-- 生成插图按钮 -->
+      <button id="generate-all-images" class="px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-full font-medium hover:from-pink-600 hover:to-rose-600 transition-all shadow-lg hover:shadow-xl flex items-center gap-2 ${isGeneratingImages ? 'opacity-50 cursor-not-allowed' : ''}">
+        🎨 ${currentLanguage === 'zh' ? '生成插图' : 'Generate Images'}
+        ${isGeneratingImages ? '<span class="animate-spin">⏳</span>' : ''}
+      </button>
+      
+      <!-- 生成视频按钮 -->
+      <button id="generate-all-videos" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-full font-medium hover:from-blue-600 hover:to-indigo-600 transition-all shadow-lg hover:shadow-xl flex items-center gap-2 ${isGeneratingVideos ? 'opacity-50 cursor-not-allowed' : ''}">
+        🎬 ${currentLanguage === 'zh' ? '生成动画' : 'Generate Videos'}
+        ${isGeneratingVideos ? '<span class="animate-spin">⏳</span>' : ''}
+      </button>
+      
+      <!-- 生成语音按钮 -->
+      <button id="generate-all-audio" class="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full font-medium hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg hover:shadow-xl flex items-center gap-2 ${isGeneratingAudio ? 'opacity-50 cursor-not-allowed' : ''}">
+        🔊 ${currentLanguage === 'zh' ? '生成语音' : 'Generate Audio'}
+        ${isGeneratingAudio ? '<span class="animate-spin">⏳</span>' : ''}
+      </button>
     </div>
     
     <!-- 绘本展示区 -->
@@ -287,15 +326,15 @@ function renderStorySection(): string {
     <!-- 翻页控制 -->
     <div class="flex items-center justify-center gap-4">
       <button id="prev-page" class="px-6 py-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2" ${currentPage === 0 ? 'disabled' : ''}>
-        <span>←</span> 上一页
+        <span>←</span> ${currentLanguage === 'zh' ? '上一页' : 'Prev'}
       </button>
       
       <div class="px-6 py-3 bg-purple-100 rounded-full text-purple-700 font-medium">
-        第 ${currentPage + 1} / ${currentStory.pages.length} 页
+        ${currentLanguage === 'zh' ? '第' : 'Page'} ${currentPage + 1} / ${currentStory.pages.length}
       </div>
       
       <button id="next-page" class="px-6 py-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2" ${currentPage === currentStory.pages.length - 1 ? 'disabled' : ''}>
-        下一页 <span>→</span>
+        ${currentLanguage === 'zh' ? '下一页' : 'Next'} <span>→</span>
       </button>
     </div>
   `;
@@ -307,6 +346,8 @@ function renderCurrentPage(): string {
   
   const page = currentStory.pages[currentPage];
   const isLoading = isGeneratingImages && !page.imageUrl;
+  const isLoadingVideo = isGeneratingVideos && !page.videoUrl;
+  const isLoadingAudio = isGeneratingAudio && !page.audioUrl;
   
   return `
     <div class="relative">
@@ -317,15 +358,57 @@ function renderCurrentPage(): string {
         ` : isLoading ? `
           <div class="text-center">
             <div class="animate-spin h-12 w-12 mx-auto mb-4 border-4 border-purple-200 border-t-purple-500 rounded-full"></div>
-            <p class="text-gray-500">正在为你画插图...</p>
+            <p class="text-gray-500">${currentLanguage === 'zh' ? '正在为你画插图...' : 'Generating illustration...'}</p>
           </div>
         ` : `
           <div class="text-center text-gray-400">
             <div class="text-6xl mb-4">🖼️</div>
-            <p>暂无插图</p>
+            <p>${currentLanguage === 'zh' ? '暂无插图' : 'No illustration yet'}</p>
           </div>
         `}
+        
+        <!-- 视频播放器（如果已生成视频） -->
+        ${page.videoUrl ? `
+          <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <video 
+              src="${page.videoUrl}" 
+              controls 
+              autoplay
+              loop
+              class="max-w-full max-h-full rounded-lg shadow-2xl"
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        ` : isLoadingVideo ? `
+          <div class="absolute bottom-4 right-4 bg-blue-500/90 text-white px-4 py-2 rounded-full text-sm flex items-center gap-2">
+            <span class="animate-spin">🎬</span> ${currentLanguage === 'zh' ? '生成动画中...' : 'Generating video...'}
+          </div>
+        ` : ''}
       </div>
+      
+      <!-- 音频播放器（如果已生成音频） -->
+      ${page.audioUrl ? `
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-4 border-t border-green-200">
+          <div class="flex items-center gap-4">
+            <button class="play-audio-btn w-12 h-12 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center text-white transition-colors shadow-lg" data-page="${page.page}">
+              ▶️
+            </button>
+            <audio id="audio-${page.page}" src="${page.audioUrl}" class="hidden"></audio>
+            <div class="flex-1">
+              <p class="text-sm text-green-700 font-medium">${currentLanguage === 'zh' ? '语音朗读' : 'Audio Narration'}</p>
+              <div class="w-full h-2 bg-green-200 rounded-full overflow-hidden">
+                <div class="audio-progress h-full bg-green-500 rounded-full w-0 transition-all duration-300"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ` : isLoadingAudio ? `
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-4 border-t border-green-200 flex items-center gap-3">
+          <span class="animate-spin text-green-500">🔊</span>
+          <span class="text-green-700">${currentLanguage === 'zh' ? '生成语音中...' : 'Generating audio...'}</span>
+        </div>
+      ` : ''}
       
       <!-- 文字区域 -->
       <div class="p-8 bg-gradient-to-r from-yellow-50 to-orange-50 border-t-4 border-dashed border-orange-300">
@@ -357,6 +440,19 @@ function bindEvents(): void {
     });
   });
 
+  // 语言切换
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const lang = (e.target as HTMLElement).dataset.lang;
+      if (lang) {
+        currentLanguage = lang as 'zh' | 'en';
+        const app = document.getElementById('app');
+        if (app) render(app);
+        bindEvents();
+      }
+    });
+  });
+
   // 故事创作模式事件
   if (currentMode === 'generate') {
     bindGenerateModeEvents();
@@ -374,7 +470,7 @@ function bindGenerateModeEvents(): void {
   generateBtn?.addEventListener('click', async () => {
     const theme = themeInput?.value.trim();
     if (!theme) {
-      alert('请输入故事主题');
+      alert(currentLanguage === 'zh' ? '请输入故事主题' : 'Please enter a story theme');
       return;
     }
     await generateStory(theme);
@@ -395,6 +491,8 @@ function bindGenerateModeEvents(): void {
     currentStory = null;
     currentPage = 0;
     isGeneratingImages = false;
+    isGeneratingVideos = false;
+    isGeneratingAudio = false;
     const app = document.getElementById('app');
     if (app) render(app);
     bindEvents();
@@ -417,6 +515,49 @@ function bindGenerateModeEvents(): void {
       updatePage();
     }
   });
+
+  // 生成所有插图按钮
+  const generateAllImagesBtn = document.getElementById('generate-all-images');
+  generateAllImagesBtn?.addEventListener('click', async () => {
+    if (!isGeneratingImages && currentStory) {
+      await generateAllIllustrations();
+    }
+  });
+
+  // 生成所有视频按钮
+  const generateAllVideosBtn = document.getElementById('generate-all-videos');
+  generateAllVideosBtn?.addEventListener('click', async () => {
+    if (!isGeneratingVideos && currentStory) {
+      await generateAllVideos();
+    }
+  });
+
+  // 生成所有语音按钮
+  const generateAllAudioBtn = document.getElementById('generate-all-audio');
+  generateAllAudioBtn?.addEventListener('click', async () => {
+    if (!isGeneratingAudio && currentStory) {
+      await generateAllAudio();
+    }
+  });
+
+  // 播放音频按钮
+  document.querySelectorAll('.play-audio-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const page = (e.target as HTMLElement).dataset.page;
+      if (page) {
+        const audio = document.getElementById(`audio-${page}`) as HTMLAudioElement;
+        if (audio) {
+          if (audio.paused) {
+            audio.play();
+            (e.target as HTMLElement).textContent = '⏸️';
+          } else {
+            audio.pause();
+            (e.target as HTMLElement).textContent = '▶️';
+          }
+        }
+      }
+    });
+  });
 }
 
 // 绑定插图模式事件
@@ -428,7 +569,7 @@ function bindIllustrateModeEvents(): void {
   generateBtn?.addEventListener('click', async () => {
     const storyText = storyTextarea?.value.trim();
     if (!storyText) {
-      alert('请输入故事内容');
+      alert(currentLanguage === 'zh' ? '请输入故事内容' : 'Please enter story content');
       return;
     }
     await generateImageFromStory(storyText);
@@ -478,7 +619,7 @@ function updatePage(): void {
     // 更新页码显示
     const pageIndicator = document.querySelector('.bg-purple-100.rounded-full');
     if (pageIndicator && currentStory) {
-      pageIndicator.textContent = `第 ${currentPage + 1} / ${currentStory.pages.length} 页`;
+      pageIndicator.textContent = `${currentLanguage === 'zh' ? '第' : 'Page'} ${currentPage + 1} / ${currentStory.pages.length}`;
     }
     
     // 如果当前页没有图片，尝试生成
@@ -496,7 +637,7 @@ async function generateStory(theme: string): Promise<void> {
   const spinner = document.getElementById('generate-spinner');
   
   if (btn) (btn as HTMLButtonElement).disabled = true;
-  if (btnText) btnText.textContent = '正在创作故事...';
+  if (btnText) btnText.textContent = currentLanguage === 'zh' ? '正在创作故事...' : 'Creating story...';
   if (spinner) spinner.classList.remove('hidden');
 
   try {
@@ -504,7 +645,7 @@ async function generateStory(theme: string): Promise<void> {
     const response = await fetch('/api/story/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme }),
+      body: JSON.stringify({ theme, language: currentLanguage }),
     });
 
     const data = await response.json();
@@ -518,16 +659,16 @@ async function generateStory(theme: string): Promise<void> {
       if (app) render(app);
       bindEvents();
       
-      // 开始生成插图
+      // 自动开始生成插图
       isGeneratingImages = true;
       await generateAllIllustrations();
     } else {
-      alert(data.error || '生成失败，请重试');
+      alert(data.error || (currentLanguage === 'zh' ? '生成失败，请重试' : 'Failed, please try again'));
       resetButton();
     }
   } catch (error) {
     console.error('生成故事失败:', error);
-    alert('网络错误，请检查后重试');
+    alert(currentLanguage === 'zh' ? '网络错误，请检查后重试' : 'Network error, please try again');
     resetButton();
   }
 }
@@ -566,14 +707,14 @@ async function generateImageFromStory(storyText: string): Promise<void> {
       if (app) render(app);
       bindEvents();
     } else {
-      alert(data.error || '生成失败，请重试');
+      alert(data.error || (currentLanguage === 'zh' ? '生成失败，请重试' : 'Failed, please try again'));
     }
   } catch (error) {
     console.error('生成图片失败:', error);
-    alert('网络错误，请检查后重试');
+    alert(currentLanguage === 'zh' ? '网络错误，请检查后重试' : 'Network error, please try again');
   } finally {
     if (btn) (btn as HTMLButtonElement).disabled = false;
-    if (btnText) btnText.textContent = '🎨 生成插图';
+    if (btnText) btnText.textContent = currentLanguage === 'zh' ? '🎨 生成插图' : '🎨 Generate Image';
     if (spinner) spinner.classList.add('hidden');
   }
 }
@@ -602,6 +743,67 @@ async function generateAllIllustrations(): Promise<void> {
     console.error('生成插图失败:', error);
     isGeneratingImages = false;
   }
+}
+
+// 生成所有视频
+async function generateAllVideos(): Promise<void> {
+  if (!currentStory) return;
+  
+  // 确保有插图才能生成视频
+  const hasImages = currentStory.pages.some(p => p.imageUrl);
+  if (!hasImages) {
+    alert(currentLanguage === 'zh' ? '请先生成插图，再生成视频' : 'Please generate images first, then generate videos');
+    return;
+  }
+  
+  isGeneratingVideos = true;
+  updatePage();
+  
+  try {
+    const response = await fetch('/api/story/generate-story-videos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ story: currentStory }),
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      currentStory = data.story;
+    }
+  } catch (error) {
+    console.error('生成视频失败:', error);
+  }
+  
+  isGeneratingVideos = false;
+  updatePage();
+}
+
+// 生成所有语音
+async function generateAllAudio(): Promise<void> {
+  if (!currentStory) return;
+  
+  isGeneratingAudio = true;
+  updatePage();
+  
+  try {
+    const response = await fetch('/api/story/generate-story-audio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ story: currentStory, language: currentLanguage }),
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      currentStory = data.story;
+    }
+  } catch (error) {
+    console.error('生成语音失败:', error);
+  }
+  
+  isGeneratingAudio = false;
+  updatePage();
 }
 
 // 生成当前页插图
@@ -638,7 +840,7 @@ function resetButton(): void {
   const spinner = document.getElementById('generate-spinner');
   
   if (btn) (btn as HTMLButtonElement).disabled = false;
-  if (btnText) btnText.textContent = '✨ 开始创作';
+  if (btnText) btnText.textContent = currentLanguage === 'zh' ? '✨ 开始创作' : '✨ Start Creating';
   if (spinner) spinner.classList.add('hidden');
 }
 
