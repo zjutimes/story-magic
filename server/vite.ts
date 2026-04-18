@@ -25,18 +25,16 @@ export async function setupViteMiddleware(app: Application) {
 
   const rootPath = process.cwd();
 
-  // 确保 API 路由不被 Vite 处理
-  app.use((req, res, next) => {
+  // API 请求不传递给 Vite
+  app.use((req: Request, res: Response, next: express.NextFunction) => {
     if (req.url.startsWith('/api/')) {
-      // 跳过 Vite middleware，让 Express 路由处理 API 请求
       return next();
     }
-    // 其他请求交给 Vite 处理
     vite.middlewares(req, res, next);
   });
 
-  // 落地页处理（开发环境）
-  app.use('/', express.static(rootPath, { index: 'index.html' }));
+  // 落地页
+  app.use(express.static(rootPath, { index: 'index.html' }));
 
   console.log('🚀 Vite dev server initialized');
 }

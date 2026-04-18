@@ -1,43 +1,59 @@
-// ABOUTME: Express server with Vite integration
-// ABOUTME: Handles API routes and serves frontend in dev/prod modes
+// ABOUTME: Express server for API routes and static files
 
 import { createServer, type Server } from 'http';
-import express from 'express';
+import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import router from './routes/index';
-import { setupVite } from './vite';
+import path from 'path';
+import fs from 'fs';
 
-const isDev = process.env.COZE_PROJECT_ENV !== 'PROD';
 const port = parseInt(process.env.PORT || '5000', 10);
 const hostname = process.env.HOSTNAME || 'localhost';
-const app = express();
-// 使用 http.createServer 包装 Express app，以便支持 WebSocket 等协议升级
+const app: Express = express();
 const server = createServer(app);
 
 async function startServer(): Promise<Server> {
-  // 请求日志（仅开发环境）
-  if (isDev) {
-    app.use((req, res, next) => {
-      const start = Date.now();
-      res.on('finish', () => {
-        const ms = Date.now() - start;
-        console.log(`${req.method} ${req.url} - ${ms}ms`);
-      });
-      next();
-    });
-  }
-
   // 添加请求体解析
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // 注册 API 路由（添加 /api/story 前缀）
+  // 请求日志 - 必须在路由之前
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const ms = Date.now() - start;
+      console.log(`${req.method} ${req.url} - ${ms}ms`);
+    });
+    next();
+  });
+
+  // 注册 API 路由（必须在静态文件之前）
   app.use('/api/story', router);
 
-  // 集成 Vite（开发模式）或静态文件服务（生产模式）
-  await setupVite(app);
+  // 落地页 - 必须在静态文件之前
+  app.get('/', (_req: Request, res: Response) => {
+    const landingPagePath = path.join(process.cwd(), 'index.html');
+    if (fs.existsSync(landingPagePath)) {
+      res.sendFile(landingPagePath);
+    } else {
+      res.status(404).send('Landing page not found');
+    }
+  });
+
+  // App 页面
+  app.get('/app', (_req: Request, res: Response) => {
+    const appPagePath = path.join(process.cwd(), 'index.html');
+    if (fs.existsSync(appPagePath)) {
+      res.sendFile(appPagePath);
+    } else {
+      res.status(404).send('App page not found');
+    }
+  });
+
+  // 静态文件（Vite 开发服务器）- 必须在最后
+  app.use(express.static(process.cwd(), { index: 'index.html' }));
 
   // 全局错误处理
-  app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
     console.error('Server error:', err);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const status = 'status' in err ? (err as any).status || 500 : 500;
@@ -53,7 +69,7 @@ async function startServer(): Promise<Server> {
 
   server.listen(port, () => {
     console.log(`\n✨ Server running at http://${hostname}:${port}`);
-    console.log(`📝 Environment: ${isDev ? 'development' : 'production'}\n`);
+    console.log(`📝 Environment: development\n`);
   });
 
   return server;

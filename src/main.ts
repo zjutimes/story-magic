@@ -504,6 +504,15 @@ function renderCurrentPage(): string {
       
       <!-- 文字区域 -->
       <div class="p-8 bg-gradient-to-r from-yellow-50 to-orange-50 border-t-4 border-dashed border-orange-300">
+        <!-- 英雄之旅阶段标签 -->
+        ${page.stage ? `
+          <div class="mb-3">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 text-xs font-medium rounded-full">
+              <span class="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></span>
+              ${currentLanguage === 'zh' ? '英雄之旅' : 'Hero\'s Journey'}: ${page.stage}
+            </span>
+          </div>
+        ` : ''}
         <div class="flex items-start gap-4">
           <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg shrink-0">
             ${page.page}

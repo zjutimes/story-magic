@@ -1,20 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { LLMClient, Config, HeaderUtils, ImageGenerationClient, VideoGenerationClient, TTSClient } from 'coze-coding-dev-sdk';
-import { getSupabaseClient } from '../src/storage/database/supabase-client';
+import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient, TTSClient } from 'coze-coding-dev-sdk';
 
 const router = Router();
-
-// 初始化 LLM 客户端
-const llmConfig = new Config();
-
-// 初始化图片生成客户端
-const imageConfig = new Config();
-
-// 初始化视频生成客户端
-const videoConfig = new Config();
-
-// 初始化 TTS 客户端
-const ttsConfig = new Config();
 
 interface StoryPage {
   page: number;
@@ -153,54 +140,94 @@ router.post('/auth/logout', async (req: Request, res: Response) => {
 // 语言配置
 const languageConfig = {
   zh: {
-    generatePrompt: (theme: string) => `你是一位优秀的儿童绘本作家。请为 "${theme}" 这个主题创作一个温馨、有教育意义的儿童绘本故事。
+    generatePrompt: (theme: string) => `你是一位优秀的儿童绘本作家。请为 "${theme}" 这个主题创作一个儿童绘本故事。
+
+**重要：按照"英雄之旅"结构创作故事！**
+
+"英雄之旅"是经典的故事结构，包含12个阶段。本故事将按照这个结构展开，让故事更有深度和意义：
+
+1. **平凡世界** - 主角的日常生活（温馨开场）
+2. **冒险召唤** - 出现挑战/任务（故事起因）
+3. **拒绝召唤** - 主角犹豫/担忧（内心挣扎）
+4. **遇见导师** - 得到帮助/指引（找到方向）
+5. **跨越门槛** - 踏上冒险旅程（正式出发）
+6. **考验与盟友** - 遇到困难和新朋友（挫折与友情）
+7. **进入洞穴** - 接近最大挑战（接近高潮）
+8. **严峻考验** - 最大危机/转折（故事高潮）
+9. **获得奖赏** - 克服困难得到奖励（胜利时刻）
+10. **归来之路** - 踏上回家的路（返程）
+11. **复活** - 最后挑战/蜕变（最终成长）
+12. **带回万能药** - 带着成长和智慧归来（圆满结局）
 
 要求：
 1. 故事适合3-8岁儿童
 2. 故事要有教育意义，传递正能量
-3. 故事篇幅控制在6页左右
+3. 故事篇幅控制在12页，每页对应英雄之旅的一个阶段
 4. 每页文字不超过30个字，要简洁易懂
-5. 每页需要提供英文图片描述词（用于AI画图），风格是儿童绘本插画风格
-6. 故事中的主要角色（最多2个）要有详细的外观描述，这个描述必须保持一致地用在所有页面的图片描述中
+5. 每页需要提供英文图片描述词（用于AI画图和动画），风格是儿童绘本插画风格
+6. 主要角色（最多2个）要有详细的外观描述，这个描述必须保持一致地用在所有页面的图片描述中
+7. **动画描述词**要包含角色情绪、动作和场景氛围，用于生成有戏剧张力的动画
 
 请按以下JSON格式输出：
 {
   "title": "故事标题",
-  "characterDescription": "主要角色的详细外观描述（英文，用于保持所有插图角色一致），例如：一只白色的小兔子，长长的耳朵，大大的眼睛，粉色的小鼻子，穿着蓝色的小衣服",
+  "characterDescription": "主要角色的详细外观描述（英文，用于保持所有插图角色一致）",
   "pages": [
     {
       "page": 1,
+      "stage": "平凡世界",
       "text": "这页的文字内容（中文，不超过30字）",
-      "imagePrompt": "英文的图片描述词，必须包含角色外观描述，风格是可爱温馨的儿童绘本插画风格"
+      "imagePrompt": "英文的图片描述词，必须包含角色外观描述，风格是可爱温馨的儿童绘本插画风格",
+      "animationPrompt": "英文的动画描述词，包含：角色情绪（如happy/sad/scared/excited）、动作（如jumping/running/crying）、场景氛围（如sunny forest/magical cave）、动态效果（如stars twinkling/fireflies glowing）"
     }
   ]
 }`,
-    speaker: 'zh_female_xueayi_saturn_bigtts', // 儿童有声书声音
+    speaker: 'zh_female_xueayi_saturn_bigtts',
   },
   en: {
-    generatePrompt: (theme: string) => `You are an excellent children's picture book author. Please create a warm, educational children's picture book story for the theme "${theme}".
+    generatePrompt: (theme: string) => `You are an excellent children's picture book author. Please create a children's picture book story for the theme "${theme}".
+
+**Important: Structure your story using the "Hero's Journey" framework!**
+
+The "Hero's Journey" is a classic story structure with 12 stages. Your story should follow this structure:
+
+1. **Ordinary World** - Hero's daily life (warm opening)
+2. **Call to Adventure** - A challenge/task appears (story begins)
+3. **Refusal of the Call** - Hero hesitates/worries (inner struggle)
+4. **Meeting the Mentor** - Gets help/guidance (finds direction)
+5. **Crossing the Threshold** - Embarks on the journey (departure)
+6. **Tests, Allies & Enemies** - Faces challenges and makes friends (trials & friendship)
+7. **Approach to the Inmost Cave** - Approaches the biggest challenge (building up)
+8. **The Ordeal** - The greatest crisis/turning point (climax)
+9. **Reward** - Overcomes difficulties and gains reward (victory moment)
+10. **The Road Back** - Begins the journey home (return)
+11. **Resurrection** - Final challenge/transformation (final growth)
+12. **Return with the Elixir** - Returns with wisdom and growth (fulfilling ending)
 
 Requirements:
 1. Story suitable for children aged 3-8
 2. Story should be educational, conveying positive values
-3. Keep the story around 6 pages
+3. Story has exactly 12 pages, one for each stage of the Hero's Journey
 4. Each page should have no more than 30 words, be concise and easy to understand
-5. Each page needs English image description prompts (for AI drawing), in children's picture book illustration style
+5. Each page needs English image description prompts (for AI drawing and animation), in children's picture book illustration style
 6. Main characters (max 2) must have detailed appearance descriptions that remain CONSISTENT across ALL pages
+7. **Animation prompts** should include character emotions, actions, and scene atmosphere for dramatic animation
 
 Please output in the following JSON format:
 {
   "title": "Story Title",
-  "characterDescription": "Detailed appearance description of main characters in English (for maintaining character consistency across all illustrations), e.g.: A cute white rabbit with long ears, big eyes, pink nose, wearing a blue outfit",
+  "characterDescription": "Detailed appearance description of main characters in English (for maintaining character consistency)",
   "pages": [
     {
       "page": 1,
+      "stage": "Ordinary World",
       "text": "The text content of this page (in English, no more than 30 words)",
-      "imagePrompt": "English image description that MUST include the character appearance description, in cute and warm children's picture book style"
+      "imagePrompt": "English image description that includes character appearance, in cute and warm children's picture book style",
+      "animationPrompt": "English animation description including: character emotions (e.g., happy/sad/scared/excited), actions (e.g., jumping/running/crying), scene atmosphere (e.g., sunny forest/magical cave), dynamic effects (e.g., stars twinkling/fireflies glowing)"
     }
   ]
 }`,
-    speaker: 'en_us_male_cubic_bigtts', // 英文声音
+    speaker: 'en_us_male_cubic_bigtts',
   }
 };
 
@@ -594,10 +621,14 @@ router.post('/api/story/generate-story-videos', async (req: Request, res: Respon
           role: 'first_frame' as const,
         });
         
-        // 添加动画描述
+        // 添加动画描述 - 使用故事中的 animationPrompt，增加戏剧张力
+        const animationPrompt = page.animationPrompt 
+          ? `${page.animationPrompt}. Soft movements, warm magical atmosphere, children's picture book animation style.`
+          : `A gentle animation of the picture book scene: "${page.text}". Soft movements like a living storybook. Characters maintain consistent appearance, subtle motions - gentle breathing, blinking eyes, swaying gently. Warm and magical atmosphere.`;
+        
         contentItems.push({
           type: 'text' as const,
-          text: `A gentle animation of the picture book scene: "${page.text}". Soft movements like a living storybook. Characters maintain consistent appearance, subtle motions - gentle breathing, blinking eyes, swaying gently. Warm and magical atmosphere.`,
+          text: animationPrompt,
         });
 
         // 使用 videoGeneration 方法（支持尾帧返回）
