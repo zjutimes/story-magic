@@ -42,12 +42,18 @@
       50% { transform: rotate(3deg); }
     }
     
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
     .float { animation: float 3s ease-in-out infinite; }
     .float-delay { animation: float2 4s ease-in-out infinite; animation-delay: 1s; }
     .float-delay-2 { animation: float 5s ease-in-out infinite; animation-delay: 2s; }
     .bounce { animation: bounce 2s ease-in-out infinite; }
     .sparkle { animation: sparkle 1.5s ease-in-out infinite; }
     .wiggle { animation: wiggle 0.5s ease-in-out infinite; }
+    .spin { animation: spin 1s linear infinite; }
     
     /* 云朵样式 */
     .cloud {
@@ -95,324 +101,712 @@
       animation: pulse-ring 1.5s ease-out infinite;
       z-index: -1;
     }
+    
+    /* 应用界面样式 */
+    .app-container {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    /* 故事卡片样式 */
+    .story-card {
+      background: white;
+      border-radius: 1.5rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    .story-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.2);
+    }
+    
+    /* 进度条样式 */
+    .progress-bar {
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.3);
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+      transition: width 0.3s ease;
+    }
+    
+    /* 隐藏类 */
+    .hidden-page {
+      display: none !important;
+    }
   </style>
 </head>
 <body class="bg-yellow-50 overflow-x-hidden">
 
-  <!-- ========== 要素1: 英雄区 ========== -->
-  <section class="min-h-screen rainbow-bg relative overflow-hidden flex items-center">
-    <!-- 漂浮的装饰元素 -->
-    <div class="absolute top-20 left-10 text-6xl float">🎨</div>
-    <div class="absolute top-40 right-20 text-5xl float-delay">📚</div>
-    <div class="absolute bottom-40 left-20 text-4xl float-delay-2">✨</div>
-    <div class="absolute bottom-20 right-40 text-5xl float">🌈</div>
-    <div class="absolute top-1/4 left-1/4 text-4xl sparkle">⭐</div>
-    <div class="absolute top-1/3 right-1/3 text-3xl sparkle" style="animation-delay: 0.5s;">⭐</div>
-    
-    <!-- 云朵装饰 -->
-    <div class="absolute top-10 left-1/4 cloud w-32 h-16 float"></div>
-    <div class="absolute top-20 right-1/4 cloud w-24 h-12 float-delay"></div>
-    
-    <div class="container mx-auto px-6 text-center relative z-10">
-      <!-- Logo -->
-      <div class="mb-6">
-        <span class="text-7xl bounce inline-block">📖</span>
-      </div>
+  <!-- ========== 落地页 ========== -->
+  <div id="landing-page" class="landing-page">
+    <!-- 英雄区 -->
+    <section class="min-h-screen rainbow-bg relative overflow-hidden flex items-center">
+      <!-- 漂浮的装饰元素 -->
+      <div class="absolute top-20 left-10 text-6xl float">🎨</div>
+      <div class="absolute top-40 right-20 text-5xl float-delay">📚</div>
+      <div class="absolute bottom-40 left-20 text-4xl float-delay-2">✨</div>
+      <div class="absolute bottom-20 right-40 text-5xl float">🌈</div>
+      <div class="absolute top-1/4 left-1/4 text-4xl sparkle">⭐</div>
+      <div class="absolute top-1/3 right-1/3 text-3xl sparkle" style="animation-delay: 0.5s;">⭐</div>
       
-      <!-- 主标题 -->
-      <h1 class="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 mb-6 drop-shadow-lg">
-        Story Magic
-      </h1>
+      <!-- 云朵装饰 -->
+      <div class="absolute top-10 left-1/4 cloud w-32 h-16 float"></div>
+      <div class="absolute top-20 right-1/4 cloud w-24 h-12 float-delay"></div>
       
-      <!-- 副标题 -->
-      <h2 class="text-2xl md:text-4xl font-bold text-purple-800 mb-8">
-        AI 儿童绘本创作坊
-      </h2>
-      
-      <!-- 描述 -->
-      <p class="text-xl md:text-2xl text-purple-700 mb-12 max-w-2xl mx-auto leading-relaxed">
-        输入故事主题 ✨ <br class="md:hidden">
-        AI 帮你画插图、讲故事 🌈 <br>
-        创造属于宝贝的专属绘本！
-      </p>
-      
-      <!-- CTA 按钮 -->
-      <a href="#create" class="cta-button relative inline-block bg-gradient-to-r from-pink-500 to-orange-400 text-white text-2xl font-bold px-12 py-5 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all">
-        🚀 开始创作
-      </a>
-      
-      <!-- 年龄提示 -->
-      <p class="mt-6 text-purple-600 text-lg">
-        👶 适合 3-12 岁小朋友
-      </p>
-      
-      <!-- 滚动提示 -->
-      <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-4xl wiggle">
-        👇
-      </div>
-    </div>
-  </section>
-
-  <!-- ========== 要素2: 核心价值 ========== -->
-  <section class="py-20 bg-gradient-to-b from-pink-100 to-purple-100">
-    <div class="container mx-auto px-6">
-      <div class="text-center mb-16">
-        <span class="text-6xl mb-4 block">💫</span>
-        <h2 class="text-4xl md:text-5xl font-black text-purple-700 mb-4">
-          一句话说清 Story Magic
-        </h2>
-        <div class="w-24 h-2 bg-gradient-to-r from-pink-400 to-purple-500 mx-auto rounded-full"></div>
-      </div>
-      
-      <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-12 max-w-4xl mx-auto border-4 border-purple-200">
-        <p class="text-2xl md:text-3xl text-center text-purple-800 font-bold leading-relaxed">
-          🎨 <span class="text-pink-500">输入一个想法</span> → 
-          ✨ <span class="text-orange-500">AI 画出插图</span> → 
-          📖 <span class="text-purple-500">生成专属绘本</span>
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ========== 要素3: 功能展示 ========== -->
-  <section class="py-20 bg-gradient-to-b from-purple-100 to-blue-100">
-    <div class="container mx-auto px-6">
-      <div class="text-center mb-16">
-        <span class="text-6xl mb-4 block">🎁</span>
-        <h2 class="text-4xl md:text-5xl font-black text-purple-700 mb-4">
-          超棒的功能
-        </h2>
-        <p class="text-xl text-purple-600">每一个都让小朋友爱不释手！</p>
-      </div>
-      
-      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-        <!-- 功能卡片1 -->
-        <div class="feature-card bg-white rounded-3xl p-8 shadow-xl border-4 border-pink-200 text-center">
-          <div class="text-6xl mb-4">🤖</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-3">AI 写故事</h3>
-          <p class="text-purple-600">输入主题，AI 自动创作有趣的儿童故事！</p>
-        </div>
-        
-        <!-- 功能卡片2 -->
-        <div class="feature-card bg-white rounded-3xl p-8 shadow-xl border-4 border-orange-200 text-center">
-          <div class="text-6xl mb-4">🎨</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-3">画插图</h3>
-          <p class="text-purple-600">自动生成配套的精美插图，画风超可爱！</p>
-        </div>
-        
-        <!-- 功能卡片3 -->
-        <div class="feature-card bg-white rounded-3xl p-8 shadow-xl border-4 border-blue-200 text-center">
-          <div class="text-6xl mb-4">🎬</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-3">变动画</h3>
-          <p class="text-purple-600">静态插图一键变成会动的动画视频！</p>
-        </div>
-        
-        <!-- 功能卡片4 -->
-        <div class="feature-card bg-white rounded-3xl p-8 shadow-xl border-4 border-green-200 text-center">
-          <div class="text-6xl mb-4">🔊</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-3">讲故事</h3>
-          <p class="text-purple-600">AI 用温暖的声音朗读故事给宝宝听！</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ========== 要素4: 使用流程 ========== -->
-  <section class="py-20 bg-gradient-to-b from-blue-100 to-green-100">
-    <div class="container mx-auto px-6">
-      <div class="text-center mb-16">
-        <span class="text-6xl mb-4 block">🪄</span>
-        <h2 class="text-4xl md:text-5xl font-black text-purple-700 mb-4">
-          3 步搞定！
-        </h2>
-        <p class="text-xl text-purple-600">简单到小朋友自己就能操作</p>
-      </div>
-      
-      <div class="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-4">
-        <!-- 步骤1 -->
-        <div class="text-center flex-1">
-          <div class="bg-white rounded-full w-32 h-32 mx-auto mb-6 flex items-center justify-center shadow-xl border-4 border-pink-300">
-            <span class="text-5xl">💡</span>
-          </div>
-          <div class="bg-pink-400 text-white text-2xl font-bold rounded-full w-10 h-10 mx-auto mb-3 flex items-center justify-center">1</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-2">想个主题</h3>
-          <p class="text-purple-600">比如"小兔子的冒险"</p>
-        </div>
-        
-        <!-- 箭头 -->
-        <div class="text-5xl text-purple-400 hidden md:block">→</div>
-        
-        <!-- 步骤2 -->
-        <div class="text-center flex-1">
-          <div class="bg-white rounded-full w-32 h-32 mx-auto mb-6 flex items-center justify-center shadow-xl border-4 border-orange-300">
-            <span class="text-5xl">✨</span>
-          </div>
-          <div class="bg-orange-400 text-white text-2xl font-bold rounded-full w-10 h-10 mx-auto mb-3 flex items-center justify-center">2</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-2">点一下</h3>
-          <p class="text-purple-600">AI 自动创作+画图</p>
-        </div>
-        
-        <!-- 箭头 -->
-        <div class="text-5xl text-purple-400 hidden md:block">→</div>
-        
-        <!-- 步骤3 -->
-        <div class="text-center flex-1">
-          <div class="bg-white rounded-full w-32 h-32 mx-auto mb-6 flex items-center justify-center shadow-xl border-4 border-green-300">
-            <span class="text-5xl">📖</span>
-          </div>
-          <div class="bg-green-400 text-white text-2xl font-bold rounded-full w-10 h-10 mx-auto mb-3 flex items-center justify-center">3</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-2">看绘本</h3>
-          <p class="text-purple-600">翻页阅读或听故事</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ========== 要素5: 产品特色 ========== -->
-  <section class="py-20 bg-gradient-to-b from-green-100 to-yellow-100">
-    <div class="container mx-auto px-6">
-      <div class="text-center mb-16">
-        <span class="text-6xl mb-4 block">🌟</span>
-        <h2 class="text-4xl md:text-5xl font-black text-purple-700 mb-4">
-          为什么选择我们？
-        </h2>
-      </div>
-      
-      <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-        <!-- 特色1 -->
-        <div class="bg-white rounded-3xl p-8 shadow-xl text-center transform hover:scale-105 transition-all">
-          <div class="text-5xl mb-4">🎯</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-3">超简单</h3>
-          <p class="text-purple-600">不需要画画基础，只要会打字就能创作！</p>
-        </div>
-        
-        <!-- 特色2 -->
-        <div class="bg-white rounded-3xl p-8 shadow-xl text-center transform hover:scale-105 transition-all">
-          <div class="text-5xl mb-4">🧠</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-3">超智能</h3>
-          <p class="text-purple-600">AI 懂得小朋友的思维方式，创作最适合的故事！</p>
-        </div>
-        
-        <!-- 特色3 -->
-        <div class="bg-white rounded-3xl p-8 shadow-xl text-center transform hover:scale-105 transition-all">
-          <div class="text-5xl mb-4">🌈</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-3">超好看</h3>
-          <p class="text-purple-600">绘本风格精美插图，比买的书还漂亮！</p>
-        </div>
-        
-        <!-- 特色4 -->
-        <div class="bg-white rounded-3xl p-8 shadow-xl text-center transform hover:scale-105 transition-all">
-          <div class="text-5xl mb-4">🔊</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-3">能听故事</h3>
-          <p class="text-purple-600">宝宝可以自己听故事，解放妈妈双手！</p>
-        </div>
-        
-        <!-- 特色5 -->
-        <div class="bg-white rounded-3xl p-8 shadow-xl text-center transform hover:scale-105 transition-all">
-          <div class="text-5xl mb-4">🎬</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-3">能看动画</h3>
-          <p class="text-purple-600">静态图变动画，故事活灵活现！</p>
-        </div>
-        
-        <!-- 特色6 -->
-        <div class="bg-white rounded-3xl p-8 shadow-xl text-center transform hover:scale-105 transition-all">
-          <div class="text-5xl mb-4">🌍</div>
-          <h3 class="text-2xl font-bold text-purple-700 mb-3">中英双语</h3>
-          <p class="text-purple-600">支持中文和英文，学习外语更有趣！</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ========== 要素6: 行动召唤 ========== -->
-  <section id="create" class="py-24 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 relative overflow-hidden">
-    <!-- 装饰 -->
-    <div class="absolute top-10 left-10 text-6xl float">⭐</div>
-    <div class="absolute top-20 right-20 text-5xl float-delay">✨</div>
-    <div class="absolute bottom-10 left-1/4 text-4xl float-delay-2">🌟</div>
-    <div class="absolute bottom-20 right-1/3 text-5xl float">💫</div>
-    
-    <div class="container mx-auto px-6 text-center relative z-10">
-      <h2 class="text-4xl md:text-6xl font-black text-white mb-8 drop-shadow-lg">
-        准备好了吗？
-      </h2>
-      <p class="text-2xl text-white mb-12 opacity-90">
-        让 AI 帮你的宝贝创造一个独一无二的故事！
-      </p>
-      
-      <a href="#" onclick="goToApp()" class="cta-button relative inline-block bg-white text-purple-600 text-3xl font-black px-16 py-6 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all">
-        🚀 开启创作之旅
-      </a>
-      
-      <p class="mt-8 text-white text-lg opacity-80">
-        完全免费 · 立即使用 · 无需注册也能体验
-      </p>
-    </div>
-  </section>
-
-  <!-- ========== 要素7: 页脚 ========== -->
-  <footer class="bg-purple-800 text-white py-12">
-    <div class="container mx-auto px-6">
-      <div class="text-center">
+      <div class="container mx-auto px-6 text-center relative z-10">
         <!-- Logo -->
         <div class="mb-6">
-          <span class="text-5xl">📖</span>
-          <span class="text-3xl font-black ml-2">Story Magic</span>
+          <span class="text-7xl bounce inline-block">📖</span>
         </div>
         
-        <p class="text-purple-300 mb-6">
-          AI 儿童绘本创作坊 · 让每个孩子都能成为小作家
+        <!-- 主标题 -->
+        <h1 class="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 mb-6 drop-shadow-lg">
+          Story Magic
+        </h1>
+        
+        <!-- 副标题 -->
+        <h2 class="text-2xl md:text-4xl font-bold text-purple-800 mb-8">
+          AI 儿童绘本创作坊
+        </h2>
+        
+        <!-- 描述 -->
+        <p class="text-xl md:text-2xl text-purple-700 mb-12 max-w-2xl mx-auto leading-relaxed">
+          输入故事主题 ✨ <br class="md:hidden">
+          AI 帮你画插图、讲故事 🌈 <br>
+          创造属于宝贝的专属绘本！
         </p>
         
-        <!-- 链接 -->
-        <div class="flex justify-center gap-8 mb-8">
-          <a href="#features" class="text-purple-300 hover:text-white transition-colors">功能介绍</a>
-          <a href="#how" class="text-purple-300 hover:text-white transition-colors">如何使用</a>
-          <a href="#about" class="text-purple-300 hover:text-white transition-colors">关于我们</a>
+        <!-- CTA 按钮 -->
+        <button onclick="startCreating()" class="cta-button relative inline-block bg-gradient-to-r from-pink-500 to-orange-400 text-white text-2xl font-bold px-12 py-5 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all cursor-pointer">
+          🚀 开始创作
+        </button>
+        
+        <!-- 年龄提示 -->
+        <p class="mt-6 text-purple-600 text-lg">
+          👶 适合 3-12 岁小朋友
+        </p>
+        
+        <!-- 滚动提示 -->
+        <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-4xl wiggle">
+          👇
+        </div>
+      </div>
+    </section>
+
+    <!-- 核心价值 -->
+    <section class="py-20 bg-gradient-to-b from-pink-100 to-purple-100">
+      <div class="container mx-auto px-6">
+        <div class="text-center mb-16">
+          <span class="text-6xl mb-4 block">💫</span>
+          <h2 class="text-4xl md:text-5xl font-black text-purple-700 mb-4">
+            一句话说清 Story Magic
+          </h2>
+          <div class="w-24 h-2 bg-gradient-to-r from-pink-400 to-purple-500 mx-auto rounded-full"></div>
         </div>
         
-        <!-- 社交图标 -->
-        <div class="flex justify-center gap-6 mb-8">
-          <a href="#" class="text-3xl hover:scale-110 transition-transform">📧</a>
-          <a href="#" class="text-3xl hover:scale-110 transition-transform">💬</a>
-          <a href="#" class="text-3xl hover:scale-110 transition-transform">📱</a>
-        </div>
-        
-        <!-- 版权 -->
-        <div class="border-t border-purple-600 pt-6">
-          <p class="text-purple-400 text-sm">
-            © 2024 Story Magic. Made with ❤️ for kids.
-          </p>
-          <p class="text-purple-500 text-xs mt-2">
-            Powered by AI · Built with ❤️
+        <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-12 max-w-4xl mx-auto border-4 border-purple-200">
+          <p class="text-2xl md:text-3xl text-center text-purple-800 font-bold leading-relaxed">
+            🎨 <span class="text-pink-500">输入一个想法</span> → 
+            ✨ <span class="text-orange-500">AI 画出插图</span> → 
+            📖 <span class="text-purple-500">生成专属绘本</span>
           </p>
         </div>
       </div>
+    </section>
+
+    <!-- 功能展示 -->
+    <section class="py-20 bg-gradient-to-b from-purple-100 to-blue-100">
+      <div class="container mx-auto px-6">
+        <div class="text-center mb-16">
+          <span class="text-6xl mb-4 block">🎁</span>
+          <h2 class="text-4xl md:text-5xl font-black text-purple-700 mb-4">
+            超棒的功能
+          </h2>
+          <p class="text-xl text-purple-600">每一个都让小朋友爱不释手！</p>
+        </div>
+        
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div class="feature-card bg-white rounded-3xl p-8 shadow-xl border-4 border-pink-200 text-center">
+            <div class="text-6xl mb-4">🤖</div>
+            <h3 class="text-2xl font-bold text-purple-700 mb-3">AI 故事创作</h3>
+            <p class="text-purple-600">输入主题，AI 帮你写出一个完整有趣的12页故事</p>
+          </div>
+          
+          <div class="feature-card bg-white rounded-3xl p-8 shadow-xl border-4 border-orange-200 text-center">
+            <div class="text-6xl mb-4">🎨</div>
+            <h3 class="text-2xl font-bold text-purple-700 mb-3">智能插画</h3>
+            <p class="text-purple-600">AI 为每个故事场景生成精美的水彩风格插图</p>
+          </div>
+          
+          <div class="feature-card bg-white rounded-3xl p-8 shadow-xl border-4 border-blue-200 text-center">
+            <div class="text-6xl mb-4">🎬</div>
+            <h3 class="text-2xl font-bold text-purple-700 mb-3">动画视频</h3>
+            <p class="text-purple-600">静态插图变成动态动画，让故事活起来</p>
+          </div>
+          
+          <div class="feature-card bg-white rounded-3xl p-8 shadow-xl border-4 border-green-200 text-center">
+            <div class="text-6xl mb-4">🔊</div>
+            <h3 class="text-2xl font-bold text-purple-700 mb-3">语音朗读</h3>
+            <p class="text-purple-600">AI 配音，帮你把故事念给小宝贝听</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 使用流程 -->
+    <section class="py-20 bg-gradient-to-b from-blue-100 to-green-100">
+      <div class="container mx-auto px-6">
+        <div class="text-center mb-16">
+          <span class="text-6xl mb-4 block">🚀</span>
+          <h2 class="text-4xl md:text-5xl font-black text-purple-700 mb-4">
+            只需3步
+          </h2>
+          <p class="text-xl text-purple-600">创作你的专属绘本</p>
+        </div>
+        
+        <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div class="text-center">
+            <div class="w-24 h-24 bg-gradient-to-r from-pink-400 to-orange-400 rounded-full flex items-center justify-center text-5xl font-black text-white mx-auto mb-6 shadow-xl">
+              1
+            </div>
+            <h3 class="text-2xl font-bold text-purple-700 mb-3">输入想法</h3>
+            <p class="text-purple-600">告诉 AI 你想听什么故事</p>
+          </div>
+          
+          <div class="text-center">
+            <div class="w-24 h-24 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-5xl font-black text-white mx-auto mb-6 shadow-xl">
+              2
+            </div>
+            <h3 class="text-2xl font-bold text-purple-700 mb-3">AI 创作</h3>
+            <p class="text-purple-600">AI 生成故事和插图</p>
+          </div>
+          
+          <div class="text-center">
+            <div class="w-24 h-24 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center text-5xl font-black text-white mx-auto mb-6 shadow-xl">
+              3
+            </div>
+            <h3 class="text-2xl font-bold text-purple-700 mb-3">欣赏故事</h3>
+            <p class="text-purple-600">翻阅绘本，享受亲子时光</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 产品特色 -->
+    <section class="py-20 bg-gradient-to-b from-green-100 to-yellow-100">
+      <div class="container mx-auto px-6">
+        <div class="text-center mb-16">
+          <span class="text-6xl mb-4 block">💝</span>
+          <h2 class="text-4xl md:text-5xl font-black text-purple-700 mb-4">
+            为什么选择我们？
+          </h2>
+        </div>
+        
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div class="flex items-start gap-4">
+            <div class="text-4xl">🎯</div>
+            <div>
+              <h3 class="text-xl font-bold text-purple-700 mb-2">英雄之旅框架</h3>
+              <p class="text-purple-600">专业叙事结构，让故事更精彩</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-4">
+            <div class="text-4xl">🌍</div>
+            <div>
+              <h3 class="text-xl font-bold text-purple-700 mb-2">中英双语</h3>
+              <p class="text-purple-600">支持中文和英文故事创作</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-4">
+            <div class="text-4xl">⚡</div>
+            <div>
+              <h3 class="text-xl font-bold text-purple-700 mb-2">即时生成</h3>
+              <p class="text-purple-600">几秒钟就能完成整个绘本</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-4">
+            <div class="text-4xl">🎨</div>
+            <div>
+              <h3 class="text-xl font-bold text-purple-700 mb-2">精美插图</h3>
+              <p class="text-purple-600">水彩风格，专为儿童设计</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-4">
+            <div class="text-4xl">📱</div>
+            <div>
+              <h3 class="text-xl font-bold text-purple-700 mb-2">随时访问</h3>
+              <p class="text-purple-600">支持手机、平板、电脑</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-4">
+            <div class="text-4xl">💰</div>
+            <div>
+              <h3 class="text-xl font-bold text-purple-700 mb-2">完全免费</h3>
+              <p class="text-purple-600">无需付费，无广告干扰</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 行动召唤 -->
+    <section class="py-24 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 relative overflow-hidden">
+      <div class="absolute top-10 left-10 text-6xl float">⭐</div>
+      <div class="absolute top-20 right-20 text-5xl float-delay">✨</div>
+      <div class="absolute bottom-10 left-1/4 text-4xl float-delay-2">🌟</div>
+      <div class="absolute bottom-20 right-1/3 text-5xl float">💫</div>
+      
+      <div class="container mx-auto px-6 text-center relative z-10">
+        <h2 class="text-4xl md:text-6xl font-black text-white mb-8 drop-shadow-lg">
+          准备好了吗？
+        </h2>
+        <p class="text-2xl text-white mb-12 opacity-90">
+          让 AI 帮你的宝贝创造一个独一无二的故事！
+        </p>
+        
+        <button onclick="startCreating()" class="cta-button relative inline-block bg-white text-purple-600 text-3xl font-black px-16 py-6 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all cursor-pointer">
+          🚀 开启创作之旅
+        </button>
+        
+        <p class="mt-8 text-white text-lg opacity-80">
+          完全免费 · 立即使用 · 无需注册也能体验
+        </p>
+      </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="bg-purple-800 text-white py-12">
+      <div class="container mx-auto px-6">
+        <div class="text-center">
+          <div class="mb-6">
+            <span class="text-5xl">📖</span>
+            <span class="text-3xl font-black ml-2">Story Magic</span>
+          </div>
+          
+          <p class="text-purple-300 mb-6">
+            AI 儿童绘本创作坊 · 让每个孩子都能成为小作家
+          </p>
+          
+          <div class="border-t border-purple-600 pt-6">
+            <p class="text-purple-400 text-sm">
+              © 2024 Story Magic. Made with ❤️ for kids.
+            </p>
+            <p class="text-purple-500 text-xs mt-2">
+              Powered by AI · Built with ❤️
+            </p>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ========== 应用界面 ========== -->
+  <div id="app-page" class="app-container hidden-page">
+    <!-- 顶部导航 -->
+    <nav class="bg-white/10 backdrop-blur-md border-b border-white/20">
+      <div class="container mx-auto px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="text-4xl">📖</span>
+          <span class="text-2xl font-black text-white">Story Magic</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <button onclick="goBack()" class="text-white hover:text-pink-300 transition-colors flex items-center gap-2">
+            <span>🏠</span> 返回首页
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <div class="container mx-auto px-6 py-12">
+      <!-- 创作区域 -->
+      <div id="create-section" class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-12">
+          <h2 class="text-3xl md:text-4xl font-black text-center text-purple-700 mb-8">
+            🎨 创作你的专属故事
+          </h2>
+          
+          <!-- 语言选择 -->
+          <div class="mb-6 flex justify-center gap-4">
+            <button id="lang-zh" onclick="setLanguage('zh')" class="px-6 py-3 rounded-full font-bold bg-purple-600 text-white">
+              🇨🇳 中文
+            </button>
+            <button id="lang-en" onclick="setLanguage('en')" class="px-6 py-3 rounded-full font-bold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">
+              🇺🇸 English
+            </button>
+          </div>
+          
+          <!-- 主题输入 -->
+          <div class="mb-8">
+            <label class="block text-lg font-bold text-purple-700 mb-3">
+              📝 故事主题
+            </label>
+            <input 
+              type="text" 
+              id="theme-input" 
+              placeholder="例如：小兔子去上学、小龙寻宝、魔法森林..."
+              class="w-full px-6 py-4 text-lg border-3 border-purple-300 rounded-2xl focus:border-purple-600 focus:ring-4 focus:ring-purple-200 outline-none transition-all"
+            >
+            <p id="theme-hint" class="mt-2 text-purple-600 text-sm">告诉 AI 你想听什么故事，越具体越好！</p>
+          </div>
+          
+          <!-- 生成按钮 -->
+          <button 
+            id="generate-btn" 
+            onclick="generateStory()"
+            class="w-full bg-gradient-to-r from-purple-600 to-pink-500 text-white text-xl font-bold py-5 rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
+          >
+            <span id="generate-btn-text">✨ 开始创作</span>
+          </button>
+          
+          <!-- 进度显示 -->
+          <div id="progress-section" class="mt-6 hidden">
+            <div class="bg-gray-100 rounded-2xl p-4">
+              <div class="flex items-center justify-between mb-2">
+                <span id="progress-text" class="text-purple-700 font-bold">生成中...</span>
+                <span id="progress-percent" class="text-purple-600">0%</span>
+              </div>
+              <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 故事展示区域 -->
+      <div id="story-section" class="hidden mt-12">
+        <div class="text-center mb-8">
+          <h2 id="story-title" class="text-3xl md:text-4xl font-black text-white mb-2"></h2>
+          <p id="story-character" class="text-white/80"></p>
+        </div>
+        
+        <!-- 功能按钮 -->
+        <div class="flex flex-wrap justify-center gap-4 mb-8">
+          <button id="btn-illustrate" onclick="generateIllustrations()" class="bg-white text-purple-600 px-6 py-3 rounded-full font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all flex items-center gap-2">
+            <span>🎨</span> 生成插图
+          </button>
+          <button id="btn-video" onclick="generateVideos()" class="bg-white text-purple-600 px-6 py-3 rounded-full font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all flex items-center gap-2">
+            <span>🎬</span> 生成视频
+          </button>
+          <button id="btn-audio" onclick="generateAudio()" class="bg-white text-purple-600 px-6 py-3 rounded-full font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all flex items-center gap-2">
+            <span>🔊</span> 生成语音
+          </button>
+          <button onclick="goBack()" class="bg-white/20 text-white px-6 py-3 rounded-full font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all flex items-center gap-2">
+            <span>🔄</span> 重新创作
+          </button>
+        </div>
+        
+        <!-- 故事页面导航 -->
+        <div id="story-nav" class="flex justify-center gap-2 mb-8 flex-wrap">
+          <!-- 动态生成 -->
+        </div>
+        
+        <!-- 当前页面展示 -->
+        <div id="page-display" class="story-card">
+          <div class="p-6 md:p-8">
+            <div class="flex items-center justify-between mb-4">
+              <span id="page-stage" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-full font-bold text-sm"></span>
+              <span id="page-number" class="text-purple-600 font-bold"></span>
+            </div>
+            
+            <div id="page-content" class="flex flex-col md:flex-row gap-6">
+              <div id="page-image" class="flex-1 flex items-center justify-center bg-gray-100 rounded-2xl min-h-[300px]">
+                <!-- 插图区域 -->
+              </div>
+              <div class="flex-1 flex flex-col justify-center">
+                <p id="page-text" class="text-xl md:text-2xl text-gray-800 leading-relaxed"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 页面导航按钮 -->
+        <div class="flex justify-between mt-6">
+          <button id="prev-page-btn" onclick="prevPage()" class="bg-white/20 text-white px-6 py-3 rounded-full font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all flex items-center gap-2">
+            <span>⬅️</span> 上一页
+          </button>
+          <button id="next-page-btn" onclick="nextPage()" class="bg-white/20 text-white px-6 py-3 rounded-full font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all flex items-center gap-2">
+            下一页 <span>➡️</span>
+          </button>
+        </div>
+      </div>
     </div>
-  </footer>
+  </div>
 
   <script>
-    // 检查URL参数，如果是app模式则跳转到完整应用
-    if (window.location.pathname === '/app' || window.location.search.includes('app=true')) {
-      // 已经是应用模式
-    } else {
-      // 默认显示落地页
+    // 状态管理
+    let currentStory = null;
+    let currentPage = 0;
+    let currentLanguage = 'zh';
+    let isGenerating = false;
+    
+    // 界面切换
+    function startCreating() {
+      document.getElementById('landing-page').classList.add('hidden-page');
+      document.getElementById('app-page').classList.remove('hidden-page');
+      window.scrollTo(0, 0);
     }
     
-    function goToApp() {
-      // 跳转到应用页面
-      window.location.href = '/app';
+    function goBack() {
+      document.getElementById('landing-page').classList.remove('hidden-page');
+      document.getElementById('app-page').classList.add('hidden-page');
+      currentStory = null;
+      currentPage = 0;
+      document.getElementById('story-section').classList.add('hidden');
+      document.getElementById('theme-input').value = '';
+      window.scrollTo(0, 0);
     }
     
-    // 平滑滚动
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth' });
+    // 语言切换
+    function setLanguage(lang) {
+      currentLanguage = lang;
+      const zhBtn = document.getElementById('lang-zh');
+      const enBtn = document.getElementById('lang-en');
+      const themeInput = document.getElementById('theme-input');
+      const themeHint = document.getElementById('theme-hint');
+      const btnText = document.getElementById('generate-btn-text');
+      
+      if (lang === 'zh') {
+        zhBtn.className = 'px-6 py-3 rounded-full font-bold bg-purple-600 text-white';
+        enBtn.className = 'px-6 py-3 rounded-full font-bold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors';
+        themeInput.placeholder = '例如：小兔子去上学、小龙寻宝、魔法森林...';
+        themeHint.textContent = '告诉 AI 你想听什么故事，越具体越好！';
+        btnText.textContent = '✨ 开始创作';
+      } else {
+        zhBtn.className = 'px-6 py-3 rounded-full font-bold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors';
+        enBtn.className = 'px-6 py-3 rounded-full font-bold bg-purple-600 text-white';
+        themeInput.placeholder = 'e.g., A little rabbit goes to school, A dragon searches for treasure...';
+        themeHint.textContent = 'Tell AI what story you want to hear, the more specific the better!';
+        btnText.textContent = '✨ Start Creating';
+      }
+    }
+    
+    // 更新进度
+    function updateProgress(text, percent) {
+      const section = document.getElementById('progress-section');
+      const progressText = document.getElementById('progress-text');
+      const progressPercent = document.getElementById('progress-percent');
+      const progressFill = document.getElementById('progress-fill');
+      
+      section.classList.remove('hidden');
+      progressText.textContent = text;
+      progressPercent.textContent = percent + '%';
+      progressFill.style.width = percent + '%';
+    }
+    
+    // 隐藏进度
+    function hideProgress() {
+      document.getElementById('progress-section').classList.add('hidden');
+    }
+    
+    // 生成故事
+    async function generateStory() {
+      if (isGenerating) return;
+      
+      const theme = document.getElementById('theme-input').value.trim();
+      if (!theme) {
+        alert(currentLanguage === 'zh' ? '请输入故事主题！' : 'Please enter a story theme!');
+        return;
+      }
+      
+      isGenerating = true;
+      const btn = document.getElementById('generate-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin inline-block">⏳</span> ' + (currentLanguage === 'zh' ? '创作中...' : 'Creating...');
+      
+      try {
+        updateProgress(currentLanguage === 'zh' ? '正在创作故事...' : 'Creating story...', 10);
+        
+        const response = await fetch('/api/story/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ theme, language: currentLanguage })
+        });
+        
+        updateProgress(currentLanguage === 'zh' ? '正在创作故事...' : 'Creating story...', 50);
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          currentStory = data.story;
+          currentPage = 0;
+          
+          // 显示故事区域
+          document.getElementById('create-section').classList.add('hidden');
+          document.getElementById('story-section').classList.remove('hidden');
+          
+          // 更新标题
+          document.getElementById('story-title').textContent = currentStory.title;
+          document.getElementById('story-character').textContent = currentStory.characterDescription;
+          
+          updateProgress(currentLanguage === 'zh' ? '故事创作完成！' : 'Story created!', 100);
+          setTimeout(hideProgress, 1500);
+          
+          // 显示第一页
+          displayPage(0);
+        } else {
+          throw new Error(data.error || '生成失败');
+        }
+      } catch (error) {
+        console.error('生成故事失败:', error);
+        alert(currentLanguage === 'zh' ? '生成故事失败，请重试！' : 'Failed to generate story, please try again!');
+        hideProgress();
+      } finally {
+        isGenerating = false;
+        btn.disabled = false;
+        btn.innerHTML = '<span id="generate-btn-text">' + (currentLanguage === 'zh' ? '✨ 开始创作' : '✨ Start Creating') + '</span>';
+      }
+    }
+    
+    // 显示页面
+    function displayPage(index) {
+      if (!currentStory || !currentStory.pages[index]) return;
+      
+      currentPage = index;
+      const page = currentStory.pages[index];
+      
+      // 更新导航
+      document.querySelectorAll('.page-nav-btn').forEach((btn, i) => {
+        if (i === index) {
+          btn.className = 'page-nav-btn w-12 h-12 bg-purple-600 text-white rounded-full font-bold shadow-lg';
+        } else {
+          btn.className = 'page-nav-btn w-12 h-12 bg-white/30 text-white rounded-full font-bold shadow-lg hover:bg-white/50 transition-colors';
         }
       });
+      
+      // 更新页面信息
+      document.getElementById('page-stage').textContent = page.stageName || '';
+      document.getElementById('page-number').textContent = (index + 1) + ' / ' + currentStory.pages.length;
+      document.getElementById('page-text').textContent = page.text;
+      
+      // 更新插图
+      const imageContainer = document.getElementById('page-image');
+      if (page.imageUrl) {
+        imageContainer.innerHTML = `<img src="${page.imageUrl}" alt="Page ${index + 1}" class="w-full h-full object-cover rounded-2xl">`;
+      } else {
+        imageContainer.innerHTML = `
+          <div class="text-center text-gray-400">
+            <div class="text-6xl mb-4">🖼️</div>
+            <p>${currentLanguage === 'zh' ? '暂无插图' : 'No illustration yet'}</p>
+            <p class="text-sm">${currentLanguage === 'zh' ? '点击"生成插图"按钮创建' : 'Click "Generate Illustration" to create'}</p>
+          </div>
+        `;
+      }
+      
+      // 更新导航按钮
+      document.getElementById('prev-page-btn').style.visibility = index > 0 ? 'visible' : 'hidden';
+      document.getElementById('next-page-btn').style.visibility = index < currentStory.pages.length - 1 ? 'visible' : 'hidden';
+    }
+    
+    // 生成导航
+    function generateNavigation() {
+      const nav = document.getElementById('story-nav');
+      nav.innerHTML = '';
+      
+      currentStory.pages.forEach((page, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'page-nav-btn w-12 h-12 bg-white/30 text-white rounded-full font-bold shadow-lg hover:bg-white/50 transition-colors';
+        btn.textContent = index + 1;
+        btn.onclick = () => displayPage(index);
+        nav.appendChild(btn);
+      });
+    }
+    
+    // 上一页
+    function prevPage() {
+      if (currentPage > 0) {
+        displayPage(currentPage - 1);
+      }
+    }
+    
+    // 下一页
+    function nextPage() {
+      if (currentStory && currentPage < currentStory.pages.length - 1) {
+        displayPage(currentPage + 1);
+      }
+    }
+    
+    // 生成插图
+    async function generateIllustrations() {
+      if (!currentStory || isGenerating) return;
+      
+      const btn = document.getElementById('btn-illustrate');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin inline-block">⏳</span> 生成中...';
+      isGenerating = true;
+      
+      try {
+        updateProgress(currentLanguage === 'zh' ? '正在生成插图...' : 'Generating illustrations...', 0);
+        
+        for (let i = 0; i < currentStory.pages.length; i++) {
+          const page = currentStory.pages[i];
+          if (!page.imageUrl && page.imagePrompt) {
+            updateProgress(
+              (currentLanguage === 'zh' ? '正在生成第' : 'Generating page ') + (i + 1) + '/' + currentStory.pages.length + '...',
+              Math.round((i / currentStory.pages.length) * 100)
+            );
+            
+            const response = await fetch('/api/story/generate-image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                prompt: page.imagePrompt,
+                characterDescription: currentStory.characterDescription
+              })
+            });
+            
+            const data = await response.json();
+            if (data.success && data.imageUrl) {
+              currentStory.pages[i].imageUrl = data.imageUrl;
+            }
+          }
+        }
+        
+        updateProgress(currentLanguage === 'zh' ? '插图生成完成！' : 'Illustrations complete!', 100);
+        setTimeout(hideProgress, 1500);
+        
+        // 刷新当前页面显示
+        displayPage(currentPage);
+      } catch (error) {
+        console.error('生成插图失败:', error);
+        alert(currentLanguage === 'zh' ? '生成插图失败，请重试！' : 'Failed to generate illustrations!');
+      } finally {
+        isGenerating = false;
+        btn.disabled = false;
+        btn.innerHTML = '<span>🎨</span> 生成插图';
+      }
+    }
+    
+    // 生成视频
+    async function generateVideos() {
+      alert(currentLanguage === 'zh' ? '视频生成功能即将上线！' : 'Video generation coming soon!');
+    }
+    
+    // 生成语音
+    async function generateAudio() {
+      alert(currentLanguage === 'zh' ? '语音生成功能即将上线！' : 'Audio generation coming soon!');
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      // 检查 URL 参数
+      if (window.location.search.includes('app=true')) {
+        startCreating();
+      }
     });
   </script>
 </body>
