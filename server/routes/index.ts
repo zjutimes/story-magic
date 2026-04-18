@@ -202,47 +202,55 @@ Return in JSON format:
 
 // ==================== 插图和媒体生成 API ====================
 
-// 生成插图
+// 生成故事插图 - 优化：使用并发生成，大幅加快速度
 storyRouter.post('/generate-illustrations', async (req: Request, res: Response) => {
   try {
     const { story } = req.body;
-    console.log('收到生成插图请求:', story?.title);
+    console.log('收到生成插图请求:', story?.title, '- 共', story?.pages?.length || 0, '张');
   
     if (!story || !story.pages) {
       return res.status(400).json({ error: '请提供有效的故事内容' });
     }
 
-    const updatedPages = [...story.pages];
+    const updatedPages = story.pages.map((page: any) => ({ ...page }));
+    const totalPages = updatedPages.length;
+    
+    // 并发生成所有插图（最多5张同时）
+    const batchSize = 5;
+    for (let i = 0; i < totalPages; i += batchSize) {
+      const batch = updatedPages.slice(i, Math.min(i + batchSize, totalPages));
+      
+      await Promise.all(batch.map(async (page: any, batchIndex: number) => {
+        const actualIndex = i + batchIndex;
+        try {
+          const prompt = `${page.imagePrompt}, children's picture book style, watercolor effect, soft pastel colors`;
+          console.log(`正在生成第${actualIndex + 1}/${totalPages}张插图...`);
 
-    for (let i = 0; i < updatedPages.length; i++) {
-      const page = updatedPages[i];
-      try {
-        const prompt = `${page.imagePrompt}, children's picture book style, watercolor effect, soft pastel colors, warm atmosphere, high quality, detailed illustration`;
-        console.log(`正在生成第${i + 1}张插图...`);
+          const response = await imageClient.generate({
+            prompt,
+            model: 'doubao-image-241117',
+            size: '1K'
+          });
 
-        const response = await imageClient.generate({
-          prompt,
-          size: '1K'
-        });
-
-        let imageUrl = '';
-        if (typeof response === 'string') {
-          imageUrl = response;
-        } else if (response && typeof response === 'object') {
-          imageUrl = (response as any).imageUrls?.[0] || (response as any).url || '';
+          let imageUrl = '';
+          if (typeof response === 'string') {
+            imageUrl = response;
+          } else if (response && typeof response === 'object') {
+            imageUrl = (response as any).imageUrls?.[0] || (response as any).url || '';
+          }
+          
+          if (imageUrl) {
+            page.imageUrl = imageUrl;
+            console.log(`第${actualIndex + 1}张插图生成成功`);
+          }
+        } catch (error) {
+          console.error(`第${actualIndex + 1}张插图生成失败:`, error);
         }
-        
-        if (imageUrl) {
-          page.imageUrl = imageUrl;
-          console.log(`第${i + 1}张插图生成成功:`, imageUrl.substring(0, 50));
-        }
-      } catch (error) {
-        console.error(`第${i + 1}张插图生成失败:`, error);
-      }
+      }));
     }
 
     story.pages = updatedPages;
-    console.log('插图生成完成');
+    console.log('插图生成完成！共', totalPages, '张');
     res.json({ success: true, story });
 
   } catch (error: any) {
@@ -303,10 +311,12 @@ Return only the English description, nothing else.`;
       throw new Error('生成画图描述失败');
     }
 
-    // 生成插图
+    // 生成插图 - 优化：使用标准尺寸，加快生成速度
     const imgResponse = await imageClient.generate({
       prompt: `${imagePrompt}, children's picture book style, watercolor effect, soft pastel colors, high quality`,
-      size: '1K'
+      model: 'doubao-image-241117',  // 使用更快的模型
+      size: '1K',  // 1K尺寸适合绘本
+      timeout: 120  // 2分钟超时
     });
 
     let imageUrl = '';
@@ -349,13 +359,22 @@ storyRouter.post('/generate-batch-images', async (req: Request, res: Response) =
 
     console.log('收到批量生成插图请求:', prompts.length, '张');
 
+    // 批量生成插图 - 优化并发，加快生成速度
     const results = await Promise.all(
       prompts.map(async (prompt: string, index: number) => {
         try {
-          const response = await imageClient.generate({
+          // 添加超时控制
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('图片生成超时')), 120000)
+          );
+          
+          const generatePromise = imageClient.generate({
             prompt: `${prompt}, children's picture book style, watercolor effect`,
+            model: 'doubao-image-241117',
             size: '1K'
           });
+          
+          const response = await Promise.race([generatePromise, timeoutPromise]);
 
           let imageUrl = '';
           if (typeof response === 'string') {

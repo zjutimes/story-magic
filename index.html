@@ -482,14 +482,14 @@
       storySection.style.display = 'none';
     });
     
-    // 生成插图
+    // 生成插图 - 优化后约2-3分钟完成
     document.getElementById('btn-illustrate').addEventListener('click', async () => {
       if (!currentStory || isGenerating) return;
       
       isGenerating = true;
       const btn = document.getElementById('btn-illustrate');
       btn.disabled = true;
-      btn.innerHTML = '<span class="spin inline-block">⏳</span> 生成中...';
+      btn.innerHTML = '<span class="spin inline-block">⏳</span> 快速生成中... (约2-3分钟)';
       
       try {
         const response = await fetch('/api/story/generate-illustrations', {
