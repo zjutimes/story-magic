@@ -1,12 +1,21 @@
 import { Router, Request, Response } from 'express';
 import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient, TTSClient } from 'coze-coding-dev-sdk';
 
+const storyRouter = Router();
 const router = Router();
+
+// 初始化 AI 客户端
+const config = new Config();
+const llmClient = new LLMClient(config);
+const imageClient = new ImageGenerationClient(config);
+const videoClient = new VideoGenerationClient(config);
+const ttsClient = new TTSClient(config);
 
 interface StoryPage {
   page: number;
   text: string;
   imagePrompt: string;
+  stageName?: string;
   imageUrl?: string;
   videoUrl?: string;
   audioUrl?: string;
@@ -14,778 +23,541 @@ interface StoryPage {
 
 interface Story {
   title: string;
+  characterDescription: string;
   pages: StoryPage[];
 }
 
-// ==================== 用户认证 API ====================
+// ==================== 故事生成 API ====================
 
-// 用户注册
-router.post('/auth/signup', async (req: Request, res: Response) => {
-  try {
-    const { email, password, username } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: '邮箱和密码不能为空' });
-    }
-
-    const client = getSupabaseClient();
-
-    // 使用 Supabase Auth 注册
-    const { data, error } = await client.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          username: username || email.split('@')[0]
-        }
-      }
-    });
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    return res.json({
-      success: true,
-      user: data.user,
-      message: '注册成功'
-    });
-  } catch (error) {
-    console.error('注册失败:', error);
-    return res.status(500).json({ error: '注册失败，请重试' });
-  }
-});
-
-// 用户登录
-router.post('/auth/login', async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: '邮箱和密码不能为空' });
-    }
-
-    const client = getSupabaseClient();
-
-    // 使用 Supabase Auth 登录
-    const { data, error } = await client.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) {
-      return res.status(401).json({ error: '邮箱或密码错误' });
-    }
-
-    return res.json({
-      success: true,
-      user: data.user,
-      session: data.session
-    });
-  } catch (error) {
-    console.error('登录失败:', error);
-    return res.status(500).json({ error: '登录失败，请重试' });
-  }
-});
-
-// 获取当前用户信息
-router.get('/auth/user', async (req: Request, res: Response) => {
-  try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: '未登录' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const client = getSupabaseClient(token);
-
-    const { data, error } = await client.auth.getUser();
-
-    if (error) {
-      return res.status(401).json({ error: '登录已过期' });
-    }
-
-    return res.json({
-      success: true,
-      user: data.user
-    });
-  } catch (error) {
-    console.error('获取用户信息失败:', error);
-    return res.status(500).json({ error: '获取用户信息失败' });
-  }
-});
-
-// 用户登出
-router.post('/auth/logout', async (req: Request, res: Response) => {
-  try {
-    const authHeader = req.headers.authorization;
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      const client = getSupabaseClient(token);
-      await client.auth.signOut();
-    }
-
-    return res.json({
-      success: true,
-      message: '已退出登录'
-    });
-  } catch (error) {
-    console.error('登出失败:', error);
-    return res.status(500).json({ error: '登出失败' });
-  }
-});
-
-// 语言配置
-const languageConfig = {
-  zh: {
-    generatePrompt: (theme: string) => `你是一位优秀的儿童绘本作家。请为 "${theme}" 这个主题创作一个儿童绘本故事。
-
-**重要：按照"英雄之旅"结构创作故事！**
-
-"英雄之旅"是经典的故事结构，包含12个阶段。本故事将按照这个结构展开，让故事更有深度和意义：
-
-1. **平凡世界** - 主角的日常生活（温馨开场）
-2. **冒险召唤** - 出现挑战/任务（故事起因）
-3. **拒绝召唤** - 主角犹豫/担忧（内心挣扎）
-4. **遇见导师** - 得到帮助/指引（找到方向）
-5. **跨越门槛** - 踏上冒险旅程（正式出发）
-6. **考验与盟友** - 遇到困难和新朋友（挫折与友情）
-7. **进入洞穴** - 接近最大挑战（接近高潮）
-8. **严峻考验** - 最大危机/转折（故事高潮）
-9. **获得奖赏** - 克服困难得到奖励（胜利时刻）
-10. **归来之路** - 踏上回家的路（返程）
-11. **复活** - 最后挑战/蜕变（最终成长）
-12. **带回万能药** - 带着成长和智慧归来（圆满结局）
-
-要求：
-1. 故事适合3-8岁儿童
-2. 故事要有教育意义，传递正能量
-3. 故事篇幅控制在12页，每页对应英雄之旅的一个阶段
-4. 每页文字不超过30个字，要简洁易懂
-5. 每页需要提供英文图片描述词（用于AI画图和动画），风格是儿童绘本插画风格
-6. 主要角色（最多2个）要有详细的外观描述，这个描述必须保持一致地用在所有页面的图片描述中
-7. **动画描述词**要包含角色情绪、动作和场景氛围，用于生成有戏剧张力的动画
-
-请按以下JSON格式输出：
-{
-  "title": "故事标题",
-  "characterDescription": "主要角色的详细外观描述（英文，用于保持所有插图角色一致）",
-  "pages": [
-    {
-      "page": 1,
-      "stage": "平凡世界",
-      "text": "这页的文字内容（中文，不超过30字）",
-      "imagePrompt": "英文的图片描述词，必须包含角色外观描述，风格是可爱温馨的儿童绘本插画风格",
-      "animationPrompt": "英文的动画描述词，包含：角色情绪（如happy/sad/scared/excited）、动作（如jumping/running/crying）、场景氛围（如sunny forest/magical cave）、动态效果（如stars twinkling/fireflies glowing）"
-    }
+// 英雄之旅12阶段定义
+const heroJourneyStages = {
+  zh: [
+    { name: '平凡世界', prompt: '主角在日常生活环境中，展现他们的日常生活和性格特点。' },
+    { name: '冒险召唤', prompt: '出现了一个特殊的任务或挑战，主角第一次意识到需要行动。' },
+    { name: '拒绝召唤', prompt: '主角表现出犹豫或担忧，面对未知感到不安。' },
+    { name: '遇见导师', prompt: '主角遇到了一位智者或朋友，获得了鼓励和指引。' },
+    { name: '跨越门槛', prompt: '主角鼓起勇气，踏上冒险之旅，离开熟悉的世界。' },
+    { name: '考验与盟友', prompt: '主角遇到新的挑战，也结识了新的朋友和伙伴。' },
+    { name: '进入洞穴', prompt: '主角接近了最大的挑战所在之地。' },
+    { name: '严峻考验', prompt: '主角面临最大的危机和考验，这是故事的转折点。' },
+    { name: '获得奖赏', prompt: '主角克服了困难，获得了珍贵的奖赏或领悟。' },
+    { name: '归来之路', prompt: '主角踏上了回家的旅程，带着收获和成长。' },
+    { name: '复活', prompt: '主角面临最后的考验，完成最终的蜕变和成长。' },
+    { name: '带回万能药', prompt: '主角回到平凡世界，分享所学，成为更好的自己。' }
+  ],
+  en: [
+    { name: 'Ordinary World', prompt: 'The hero in their daily life, showing their routine and personality.' },
+    { name: 'Call to Adventure', prompt: 'A special task or challenge appears, the hero first realizes they need to act.' },
+    { name: 'Refusal of the Call', prompt: 'The hero shows hesitation or worry, feeling uneasy about the unknown.' },
+    { name: 'Meeting the Mentor', prompt: 'The hero meets a wise person or friend who gives encouragement and guidance.' },
+    { name: 'Crossing the Threshold', prompt: 'The hero gathers courage and embarks on the adventure, leaving the familiar world.' },
+    { name: 'Tests and Allies', prompt: 'The hero faces new challenges and makes new friends.' },
+    { name: 'Approach to the Cave', prompt: 'The hero approaches the place of the greatest challenge.' },
+    { name: 'The Ordeal', prompt: 'The hero faces the biggest crisis and turning point of the story.' },
+    { name: 'Reward', prompt: 'The hero overcomes difficulties and gains a precious reward or insight.' },
+    { name: 'The Road Back', prompt: 'The hero begins the journey home, bringing their gains and growth.' },
+    { name: 'Resurrection', prompt: 'The hero faces one final test, completing their final transformation.' },
+    { name: 'Return with the Elixir', prompt: 'The hero returns to the ordinary world, sharing what they learned and becoming a better self.' }
   ]
-}`,
-    speaker: 'zh_female_xueayi_saturn_bigtts',
-  },
-  en: {
-    generatePrompt: (theme: string) => `You are an excellent children's picture book author. Please create a children's picture book story for the theme "${theme}".
-
-**Important: Structure your story using the "Hero's Journey" framework!**
-
-The "Hero's Journey" is a classic story structure with 12 stages. Your story should follow this structure:
-
-1. **Ordinary World** - Hero's daily life (warm opening)
-2. **Call to Adventure** - A challenge/task appears (story begins)
-3. **Refusal of the Call** - Hero hesitates/worries (inner struggle)
-4. **Meeting the Mentor** - Gets help/guidance (finds direction)
-5. **Crossing the Threshold** - Embarks on the journey (departure)
-6. **Tests, Allies & Enemies** - Faces challenges and makes friends (trials & friendship)
-7. **Approach to the Inmost Cave** - Approaches the biggest challenge (building up)
-8. **The Ordeal** - The greatest crisis/turning point (climax)
-9. **Reward** - Overcomes difficulties and gains reward (victory moment)
-10. **The Road Back** - Begins the journey home (return)
-11. **Resurrection** - Final challenge/transformation (final growth)
-12. **Return with the Elixir** - Returns with wisdom and growth (fulfilling ending)
-
-Requirements:
-1. Story suitable for children aged 3-8
-2. Story should be educational, conveying positive values
-3. Story has exactly 12 pages, one for each stage of the Hero's Journey
-4. Each page should have no more than 30 words, be concise and easy to understand
-5. Each page needs English image description prompts (for AI drawing and animation), in children's picture book illustration style
-6. Main characters (max 2) must have detailed appearance descriptions that remain CONSISTENT across ALL pages
-7. **Animation prompts** should include character emotions, actions, and scene atmosphere for dramatic animation
-
-Please output in the following JSON format:
-{
-  "title": "Story Title",
-  "characterDescription": "Detailed appearance description of main characters in English (for maintaining character consistency)",
-  "pages": [
-    {
-      "page": 1,
-      "stage": "Ordinary World",
-      "text": "The text content of this page (in English, no more than 30 words)",
-      "imagePrompt": "English image description that includes character appearance, in cute and warm children's picture book style",
-      "animationPrompt": "English animation description including: character emotions (e.g., happy/sad/scared/excited), actions (e.g., jumping/running/crying), scene atmosphere (e.g., sunny forest/magical cave), dynamic effects (e.g., stars twinkling/fireflies glowing)"
-    }
-  ]
-}`,
-    speaker: 'en_us_male_cubic_bigtts',
-  }
 };
 
-// 生成故事内容
-router.post('/api/story/generate', async (req: Request, res: Response) => {
+// 生成故事
+storyRouter.post('/generate', async (req: Request, res: Response) => {
   try {
     const { theme, language = 'zh' } = req.body;
-    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
-    
-    // 更新客户端的 headers
-    const client = new LLMClient(llmConfig, customHeaders);
+    console.log('收到生成故事请求:', { theme, language });
 
     if (!theme) {
-      res.status(400).json({ error: language === 'en' ? 'Please provide a story theme' : '请提供故事主题' });
-      return;
+      return res.status(400).json({ error: '请提供故事主题' });
     }
 
-    // 获取语言配置
-    const config = languageConfig[language as keyof typeof languageConfig] || languageConfig.zh;
-    
-    // 构建提示词，让 LLM 生成儿童绘本内容
-    const prompt = config.generatePrompt(theme);
+    const stages = heroJourneyStages[language] || heroJourneyStages.zh;
+    const isZh = language === 'zh';
 
-    const messages = [{ role: 'user' as const, content: prompt }];
-    const response = await client.invoke(messages, { 
-      model: 'doubao-seed-1-6-251015',
-      temperature: 0.8 
+    // 构建提示词
+    const systemPrompt = isZh
+      ? `你是一位专业的儿童绘本作家，擅长使用"英雄之旅"叙事框架创作引人入胜的故事。
+请根据用户提供的theme，创作一个完整的12页儿童绘本故事。
+故事必须严格按照以下12个阶段展开：
+1. 平凡世界 - 主角在日常生活环境中
+2. 冒险召唤 - 出现特殊任务或挑战
+3. 拒绝召唤 - 主角犹豫或担忧
+4. 遇见导师 - 主角遇到智者或朋友获得指引
+5. 跨越门槛 - 主角踏上冒险之旅
+6. 考验与盟友 - 遇到挑战和新朋友
+7. 进入洞穴 - 接近最大挑战
+8. 严峻考验 - 最大危机和转折点
+9. 获得奖赏 - 克服困难获得奖赏
+10. 归来之路 - 踏上回家的旅程
+11. 复活 - 最后考验和蜕变
+12. 带回万能药 - 回到平凡世界，分享成长
+
+每个阶段要求：
+- 简洁有力的故事文本（30-50字），适合儿童理解
+- 对应的英文画图描述词，用于AI生成配套插图
+- 使用儿童绘本风格：水彩效果、柔和色调、温暖氛围
+
+请以JSON格式返回，格式如下：
+{
+  "title": "故事标题",
+  "characterDescription": "主角外观描述（用于保持所有插图中角色一致性）",
+  "pages": [
+    {
+      "page": 1,
+      "stageName": "阶段名称",
+      "text": "故事文本（中文）",
+      "imagePrompt": "英文画图描述词"
+    },
+    ...
+  ]
+}`
+      : `You are a professional children's picture book author, skilled in using the "Hero's Journey" narrative framework.
+Based on the user's theme, create a complete 12-page children's picture book story.
+Follow these 12 stages strictly:
+1. Ordinary World - Hero in their daily life
+2. Call to Adventure - Special task or challenge appears
+3. Refusal of the Call - Hero shows hesitation
+4. Meeting the Mentor - Hero meets wise person or friend
+5. Crossing the Threshold - Hero embarks on adventure
+6. Tests and Allies - Faces challenges and makes friends
+7. Approach to the Cave - Approaches greatest challenge
+8. The Ordeal - Biggest crisis and turning point
+9. Reward - Overcomes difficulties and gains reward
+10. The Road Back - Begins journey home
+11. Resurrection - Final test and transformation
+12. Return with the Elixir - Returns to ordinary world
+
+Each page needs:
+- Concise story text (30-50 words), suitable for children
+- English image prompt for AI illustration generation
+- Children's picture book style: watercolor effect, soft colors, warm atmosphere
+
+Return in JSON format:
+{
+  "title": "Story Title",
+  "characterDescription": "Character appearance description (for consistency in all illustrations)",
+  "pages": [
+    {
+      "page": 1,
+      "stageName": "Stage Name",
+      "text": "Story text (English)",
+      "imagePrompt": "English image prompt"
+    },
+    ...
+  ]
+}`;
+
+    const response = await llmClient.invoke(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `请为"${theme}"创作一个儿童绘本故事` }
+      ],
+      {
+        model: 'doubao-seed-1-6-251015',
+        temperature: 0.8
+      }
+    );
+
+    let storyContent = '';
+    if (typeof response === 'string') {
+      storyContent = response;
+    } else if (response && typeof response === 'object') {
+      // 如果是对象，尝试获取 content 字段
+      storyContent = (response as any).content || JSON.stringify(response);
+    } else {
+      throw new Error('生成故事内容失败');
+    }
+
+    // 提取JSON
+    const jsonMatch = storyContent.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('无法解析故事内容');
+    }
+
+    const story: Story = JSON.parse(jsonMatch[0]);
+
+    // 确保页数正确
+    if (!story.pages || story.pages.length === 0) {
+      throw new Error('故事页数为空');
+    }
+
+    // 添加阶段名称
+    story.pages.forEach((page, index) => {
+      if (stages[index]) {
+        page.stageName = stages[index].name;
+      }
+      page.imageUrl = '';
+      page.videoUrl = '';
+      page.audioUrl = '';
     });
 
-    // 解析 LLM 返回的 JSON
-    let story: Story;
-    try {
-      // 尝试提取 JSON
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        story = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('无法解析故事内容');
-      }
-    } catch (parseError) {
-      console.error('JSON 解析错误:', parseError);
-      res.status(500).json({ error: language === 'en' ? 'Story generation failed, please try again' : '故事生成失败，请重试' });
-      return;
-    }
+    console.log('故事生成成功:', story.title, '-', story.pages.length, '页');
+    res.json({ success: true, story });
 
-    res.json({ success: true, story, language });
-  } catch (error) {
+  } catch (error: any) {
     console.error('生成故事失败:', error);
-    const errorLang = req.body.language || 'zh';
-    res.status(500).json({ error: errorLang === 'en' ? 'Story generation failed' : '生成故事失败' });
+    res.status(500).json({ error: '生成故事失败，请重试' });
   }
 });
 
-// 为故事生成插图
-router.post('/api/story/generate-illustrations', async (req: Request, res: Response) => {
+// ==================== 插图和媒体生成 API ====================
+
+// 生成插图
+storyRouter.post('/generate-illustrations', async (req: Request, res: Response) => {
   try {
     const { story } = req.body;
-    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
-    
-    // 更新图片客户端的 headers
-    const client = new ImageGenerationClient(imageConfig, customHeaders);
+    console.log('收到生成插图请求:', story?.title);
 
     if (!story || !story.pages) {
-      res.status(400).json({ error: '故事数据无效' });
-      return;
+      return res.status(400).json({ error: '请提供有效的故事内容' });
     }
 
-    // 获取角色描述（用于保持角色一致性）
-    const characterDescription = story.characterDescription || '';
-    const updatedPages: StoryPage[] = [];
+    const updatedPages = [...story.pages];
+    const chunkSize = 3; // 并行处理
 
-    // 并行生成所有插图（提高速度）
-    const generatePageImage = async (page: StoryPage): Promise<StoryPage> => {
-      try {
-        console.log(`正在生成第 ${page.page} 页插图...`);
-        
-        // 增强图片提示词
-        const basePrompt = characterDescription 
-          ? `${characterDescription}, ${page.imagePrompt}` 
-          : page.imagePrompt;
-        
-        const enhancedPrompt = `${basePrompt}, children's book illustration, cute, colorful, warm, soft lighting, watercolor effect, pastel colors`;
+    for (let i = 0; i < updatedPages.length; i += chunkSize) {
+      const chunk = updatedPages.slice(i, i + chunkSize);
+      console.log(`正在生成第${i + 1}-${Math.min(i + chunkSize, updatedPages.length)}张插图...`);
 
-        const response = await client.generate({
-          prompt: enhancedPrompt,
-          size: '1K', // 使用 1K 尺寸加快生成速度
-        });
+      const results = await Promise.all(
+        chunk.map(async (page, index) => {
+          try {
+            const prompt = `${page.imagePrompt}, children's picture book style, watercolor effect, soft pastel colors, warm atmosphere, high quality, detailed illustration`;
+            console.log(`生成第${i + index + 1}张插图 prompt:`, prompt.substring(0, 50) + '...');
 
-        const helper = client.getResponseHelper(response);
+            const response = await imageClient.generate({
+              prompt,
+              size: '1K'
+            });
 
-        if (helper.success && helper.imageUrls.length > 0) {
-          return { ...page, imageUrl: helper.imageUrls[0] };
-        }
-        return { ...page, imageUrl: '' };
-      } catch (error) {
-        console.error(`第 ${page.page} 页插图生成失败:`, error);
-        return { ...page, imageUrl: '' };
-      }
-    };
+            const helper = imageClient.getResponseHelper(response);
+            if (helper.success && helper.imageUrls.length > 0) {
+              page.imageUrl = helper.imageUrls[0];
+              console.log(`第${i + index + 1}张插图生成成功`);
+            }
+          } catch (error) {
+            console.error(`第${i + index + 1}张插图生成失败:`, error);
+          }
+          return page;
+        })
+      );
 
-    // 并行处理所有页面（最多同时3个，避免API限制）
-    const chunkSize = 3;
-    for (let i = 0; i < story.pages.length; i += chunkSize) {
-      const chunk = story.pages.slice(i, i + chunkSize);
-      const results = await Promise.all(chunk.map(generatePageImage));
-      updatedPages.push(...results);
+      // 更新结果
+      results.forEach((page, index) => {
+        updatedPages[i + index] = page;
+      });
     }
 
-    res.json({ 
-      success: true, 
-      story: {
-        ...story,
-        pages: updatedPages
-      } 
-    });
-  } catch (error) {
+    story.pages = updatedPages;
+    console.log('插图生成完成');
+    res.json({ success: true, story });
+
+  } catch (error: any) {
     console.error('生成插图失败:', error);
     res.status(500).json({ error: '生成插图失败，请重试' });
   }
 });
 
-// 根据故事文字生成图片（简化版：一段文字 -> 一张图片）
-router.post('/api/story/generate-image', async (req: Request, res: Response) => {
+// 生成单张插图
+storyRouter.post('/generate-image', async (req: Request, res: Response) => {
   try {
-    const { storyText, style } = req.body;
-    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
-    
+    const { storyText, language = 'zh' } = req.body;
+
     if (!storyText) {
-      res.status(400).json({ error: '请提供故事文字' });
-      return;
+      return res.status(400).json({ error: '请提供故事文字' });
     }
 
-    // 初始化 LLM 客户端
-    const llmClient = new LLMClient(llmConfig, customHeaders);
-    
-    // 初始化图片生成客户端
-    const imgClient = new ImageGenerationClient(imageConfig, customHeaders);
+    console.log('收到生成单张插图请求:', storyText.substring(0, 30));
 
-    console.log('正在根据故事生成图片描述...');
+    // 构建提示词
+    const systemPrompt = language === 'zh'
+      ? `你是一位专业的儿童绘本插画师。请根据给定的故事文字，生成一个详细的英文画图描述词。要求：
+1. 描述场景中的主要角色外观和表情
+2. 描述环境背景
+3. 描述整体氛围和色调
+4. 使用儿童绘本风格：水彩效果、柔和色调、温暖氛围
+5. 描述词要具体详细，适合AI生成高质量插图
 
-    // 使用 LLM 将故事文字转换成图片描述
-    const promptConvert = `你是一位专业的儿童绘本插画家。请根据以下故事文字，生成一个详细的英文图片描述词，用于 AI 画图。
+直接返回英文描述词，不要其他内容。`
+      : `You are a professional children's picture book illustrator. Based on the given story text, generate a detailed English image prompt. Requirements:
+1. Describe the main character's appearance and expression
+2. Describe the environment and background
+3. Describe the overall atmosphere and colors
+4. Use children's picture book style: watercolor effect, soft colors, warm atmosphere
+5. Be specific and detailed, suitable for AI image generation
 
-要求：
-1. 描述要生动、具体、适合画图
-2. 风格：儿童绘本插画风格（cute, colorful, warm, soft lighting）
-3. 突出故事中的主要角色和场景
-4. 不要包含文字或对话气泡
+Return only the English description, nothing else.`;
 
-故事文字：
-"${storyText}"
-
-请直接输出英文描述，不要其他内容，控制在 100 词以内。`;
-
-    const messages = [{ role: 'user' as const, content: promptConvert }];
-    const llmResponse = await llmClient.invoke(messages, { 
-      model: 'doubao-seed-1-6-251015',
-      temperature: 0.7 
-    });
-
-    // 提取图片描述
-    let imagePrompt = llmResponse.content.trim();
-    
-    // 增强提示词
-    const enhancedPrompt = `${imagePrompt}, children's book illustration style, cute, colorful, warm, soft lighting, hand-drawn style, watercolor effect, adorable characters, pastel colors, whimsical, enchanting atmosphere, high quality`;
-
-    console.log('图片描述:', enhancedPrompt);
-
-    // 生成图片
-    const imgResponse = await imgClient.generate({
-      prompt: enhancedPrompt,
-      size: '2K',
-    });
-
-    const helper = imgClient.getResponseHelper(imgResponse);
-
-    if (helper.success && helper.imageUrls.length > 0) {
-      res.json({ 
-        success: true, 
-        imageUrl: helper.imageUrls[0],
-        imagePrompt: imagePrompt
-      });
-    } else {
-      res.status(500).json({ 
-        error: '图片生成失败',
-        details: helper.errorMessages 
-      });
-    }
-  } catch (error) {
-    console.error('生成图片失败:', error);
-    res.status(500).json({ error: '生成图片失败，请重试' });
-  }
-});
-
-// 批量生成插图（多段故事 -> 多张图片）
-router.post('/api/story/generate-batch-images', async (req: Request, res: Response) => {
-  try {
-    const { storyTexts, style } = req.body;
-    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
-    
-    if (!storyTexts || !Array.isArray(storyTexts)) {
-      res.status(400).json({ error: '请提供故事文字数组' });
-      return;
-    }
-
-    // 初始化客户端
-    const llmClient = new LLMClient(llmConfig, customHeaders);
-    const imgClient = new ImageGenerationClient(imageConfig, customHeaders);
-
-    const results: Array<{ index: number; text: string; imageUrl?: string; imagePrompt?: string; error?: string }> = [];
-
-    for (let i = 0; i < storyTexts.length; i++) {
-      const storyText = storyTexts[i];
-      console.log(`正在处理第 ${i + 1}/${storyTexts.length} 段故事...`);
-
-      try {
-        // 使用 LLM 转换故事为图片描述
-        const promptConvert = `你是一位专业的儿童绘本插画家。请根据以下故事文字，生成一个详细的英文图片描述词，用于 AI 画图。
-
-故事文字： "${storyText}"
-
-要求：
-1. 描述生动、具体、适合画图
-2. 风格：儿童绘本插画风格
-3. 突出主要角色和场景
-4. 不要包含文字或对话
-
-请直接输出英文描述，控制在 80 词以内。`;
-
-        const messages = [{ role: 'user' as const, content: promptConvert }];
-        const llmResponse = await llmClient.invoke(messages, { 
-          model: 'doubao-seed-1-6-251015',
-          temperature: 0.7 
-        });
-
-        let imagePrompt = llmResponse.content.trim();
-        const enhancedPrompt = `${imagePrompt}, children's book illustration style, cute, colorful, warm, soft lighting, hand-drawn style, watercolor effect, adorable characters, pastel colors, whimsical, enchanting atmosphere`;
-
-        // 生成图片
-        const imgResponse = await imgClient.generate({
-          prompt: enhancedPrompt,
-          size: '2K',
-        });
-
-        const helper = imgClient.getResponseHelper(imgResponse);
-
-        if (helper.success && helper.imageUrls.length > 0) {
-          results.push({
-            index: i,
-            text: storyText,
-            imageUrl: helper.imageUrls[0],
-            imagePrompt: imagePrompt
-          });
-        } else {
-          results.push({
-            index: i,
-            text: storyText,
-            error: '图片生成失败'
-          });
-        }
-
-        // 添加延迟避免请求过快
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } catch (error) {
-        console.error(`处理第 ${i + 1} 段失败:`, error);
-        results.push({
-          index: i,
-          text: storyText,
-          error: '处理失败'
-        });
+    const response = await llmClient.invoke(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: storyText }
+      ],
+      {
+        model: 'doubao-seed-1-6-251015',
+        temperature: 0.8
       }
+    );
+
+    let imagePrompt = '';
+    const helper = llmClient.getResponseHelper(response);
+    if (helper.success && helper.content) {
+      imagePrompt = helper.content.trim();
+    } else {
+      throw new Error('生成画图描述失败');
     }
 
-    res.json({ 
-      success: true, 
-      results 
+    // 生成插图
+    const imgResponse = await imageClient.generate({
+      prompt: `${imagePrompt}, children's picture book style, watercolor effect, soft pastel colors, high quality`,
+      size: '1K'
     });
-  } catch (error) {
-    console.error('批量生成图片失败:', error);
-    res.status(500).json({ error: '批量生成图片失败，请重试' });
+
+    const imgHelper = imageClient.getResponseHelper(imgResponse);
+    if (!imgHelper.success || imgHelper.imageUrls.length === 0) {
+      throw new Error('生成插图失败');
+    }
+
+    console.log('单张插图生成成功');
+    res.json({
+      success: true,
+      imageUrl: imgHelper.imageUrls[0],
+      imagePrompt
+    });
+
+  } catch (error: any) {
+    console.error('生成单张插图失败:', error);
+    res.status(500).json({ error: '生成插图失败，请重试' });
   }
 });
 
-// 🎬 根据插图生成视频
-router.post('/api/story/generate-video', async (req: Request, res: Response) => {
+// 批量生成插图
+storyRouter.post('/generate-batch-images', async (req: Request, res: Response) => {
+  try {
+    const { prompts } = req.body;
+
+    if (!prompts || !Array.isArray(prompts)) {
+      return res.status(400).json({ error: '请提供有效的prompts数组' });
+    }
+
+    console.log('收到批量生成插图请求:', prompts.length, '张');
+
+    const results = await Promise.all(
+      prompts.map(async (prompt: string, index: number) => {
+        try {
+          const response = await imageClient.generate({
+            prompt: `${prompt}, children's picture book style, watercolor effect`,
+            size: '1K'
+          });
+
+          const helper = imageClient.getResponseHelper(response);
+          return {
+            index,
+            success: helper.success,
+            imageUrl: helper.success ? helper.imageUrls[0] : null
+          };
+        } catch (error) {
+          console.error(`第${index + 1}张插图生成失败:`, error);
+          return { index, success: false, imageUrl: null };
+        }
+      })
+    );
+
+    console.log('批量插图生成完成:', results.filter(r => r.success).length, '/', prompts.length);
+    res.json({ success: true, results });
+
+  } catch (error: any) {
+    console.error('批量生成插图失败:', error);
+    res.status(500).json({ error: '批量生成插图失败，请重试' });
+  }
+});
+
+// 生成视频
+storyRouter.post('/generate-video', async (req: Request, res: Response) => {
   try {
     const { imageUrl } = req.body;
-    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
-    
+
     if (!imageUrl) {
-      res.status(400).json({ error: '请提供图片URL' });
-      return;
+      return res.status(400).json({ error: '请提供插图URL' });
     }
 
-    // 初始化视频生成客户端
-    const client = new VideoGenerationClient(videoConfig, customHeaders);
+    console.log('收到生成视频请求:', imageUrl.substring(0, 50));
 
-    console.log('正在生成视频，图片URL:', imageUrl);
-
-    // 构建内容：图片作为首帧 + 文字描述动画效果
     const contentItems = [
-      {
-        type: 'image_url' as const,
-        image_url: { url: imageUrl },
-        role: 'first_frame' as const,
-      },
-      {
-        type: 'text' as const,
-        text: 'A gentle, magical animation. Soft camera movement, warm lighting transitions, subtle motion in the characters - a gentle sway, a sparkle of magic, breathing effect.',
-      },
+      { type: 'image_url' as const, image_url: { url: imageUrl }, role: 'first_frame' as const },
+      { type: 'text' as const, text: 'A gentle animation. Soft camera movement, warm lighting transitions, the character blinks and breathes subtly.' }
     ];
 
-    // 生成视频
-    const response = await client.videoGeneration(contentItems, {
+    const response = await videoClient.videoGeneration(contentItems, {
       model: 'doubao-seedance-1-5-pro-251215',
       duration: 5,
       resolution: '720p',
       ratio: '4:3',
       returnLastFrame: true,
-      generateAudio: true,
+      generateAudio: true
     });
 
-    if (response.videoUrl) {
-      res.json({ 
-        success: true, 
-        videoUrl: response.videoUrl,
-        lastFrameUrl: response.lastFrameUrl || null,
-        message: '视频生成成功！' 
-      });
-    } else {
-      res.status(500).json({ 
-        error: '视频生成失败',
-        details: response.response?.error_message || '未知错误' 
-      });
-    }
-  } catch (error) {
+    console.log('视频生成成功:', response.videoUrl);
+    res.json({
+      success: true,
+      videoUrl: response.videoUrl,
+      lastFrameUrl: response.lastFrameUrl
+    });
+
+  } catch (error: any) {
     console.error('生成视频失败:', error);
     res.status(500).json({ error: '生成视频失败，请重试' });
   }
 });
 
-// 🎬 批量生成视频（为故事每页生成视频，支持尾帧继承实现角色一致性）
-router.post('/api/story/generate-story-videos', async (req: Request, res: Response) => {
+// 为故事每页生成视频
+storyRouter.post('/generate-story-videos', async (req: Request, res: Response) => {
   try {
     const { story } = req.body;
-    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
-    
+
     if (!story || !story.pages) {
-      res.status(400).json({ error: '故事数据无效' });
-      return;
+      return res.status(400).json({ error: '请提供有效的故事内容' });
     }
 
-    // 初始化视频生成客户端
-    const client = new VideoGenerationClient(videoConfig, customHeaders);
+    console.log('收到生成故事视频请求:', story.title);
 
-    const updatedPages: StoryPage[] = [];
-    
-    // 关键：尾帧继承策略 - 上一段视频的尾帧作为下一段的首帧
-    let lastFrameUrl: string | null = null;
-    
-    for (const page of story.pages) {
-      if (!page.imageUrl) {
-        updatedPages.push({ ...page, videoUrl: '' });
-        continue;
-      }
+    let lastFrameUrl: string | undefined;
+    const updatedPages = [...story.pages];
+
+    for (let i = 0; i < updatedPages.length; i++) {
+      const page = updatedPages[i];
+      if (!page.imageUrl) continue;
+
+      console.log(`正在生成第${i + 1}页视频...`);
 
       try {
-        console.log(`正在生成第 ${page.page} 页视频...`);
-        
-        // 构建视频生成的内容数组
-        // 如果有上一段的尾帧，将其作为首帧输入，实现视觉连贯性
-        const contentItems: any[] = [];
-        
+        const contentItems = [
+          { type: 'image_url' as const, image_url: { url: page.imageUrl }, role: 'first_frame' as const }
+        ];
+
         if (lastFrameUrl) {
-          // 使用上一段的尾帧作为首帧（首帧继承策略）
-          contentItems.push({
+          contentItems.unshift({
             type: 'image_url' as const,
-            image_url: {
-              url: lastFrameUrl,
-            },
-            role: 'first_frame' as const,
+            image_url: { url: lastFrameUrl },
+            role: 'first_frame' as const
           });
         }
-        
-        // 添加当前页的插图
-        contentItems.push({
-          type: 'image_url' as const,
-          image_url: {
-            url: page.imageUrl,
-          },
-          role: 'first_frame' as const,
-        });
-        
-        // 添加动画描述 - 使用故事中的 animationPrompt，增加戏剧张力
-        const animationPrompt = page.animationPrompt 
-          ? `${page.animationPrompt}. Soft movements, warm magical atmosphere, children's picture book animation style.`
-          : `A gentle animation of the picture book scene: "${page.text}". Soft movements like a living storybook. Characters maintain consistent appearance, subtle motions - gentle breathing, blinking eyes, swaying gently. Warm and magical atmosphere.`;
-        
+
         contentItems.push({
           type: 'text' as const,
-          text: animationPrompt,
+          text: 'A gentle animation. Soft camera movement, warm lighting transitions, magical sparkles and subtle character movement.'
         });
 
-        // 使用 videoGeneration 方法（支持尾帧返回）
-        const response = await client.videoGeneration(contentItems, {
+        const response = await videoClient.videoGeneration(contentItems, {
           model: 'doubao-seedance-1-5-pro-251215',
           duration: 5,
           resolution: '720p',
-          ratio: '16:9',
-          returnLastFrame: true, // 关键：返回尾帧用于下一段视频
-          generateAudio: true, // 生成音效
-          camerafixed: false, // 允许镜头轻微移动
+          ratio: '4:3',
+          returnLastFrame: true,
+          generateAudio: true
         });
 
-        // 获取尾帧 URL（用于下一段视频的首帧）
-        if (response.lastFrameUrl) {
-          lastFrameUrl = response.lastFrameUrl;
-        }
+        page.videoUrl = response.videoUrl || '';
+        lastFrameUrl = response.lastFrameUrl;
 
-        updatedPages.push({
-          ...page,
-          videoUrl: response.videoUrl || '',
-        });
-
-        // 添加延迟避免请求过快
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      } catch (videoError) {
-        console.error(`生成第 ${page.page} 页视频失败:`, videoError);
-        updatedPages.push({
-          ...page,
-          videoUrl: '',
-        });
+        console.log(`第${i + 1}页视频生成成功`);
+      } catch (error) {
+        console.error(`第${i + 1}页视频生成失败:`, error);
       }
     }
 
-    res.json({ 
-      success: true, 
-      story: {
-        ...story,
-        pages: updatedPages
-      } 
-    });
-  } catch (error) {
-    console.error('批量生成视频失败:', error);
-    res.status(500).json({ error: '批量生成视频失败，请重试' });
+    story.pages = updatedPages;
+    console.log('故事视频生成完成');
+    res.json({ success: true, story });
+
+  } catch (error: any) {
+    console.error('生成故事视频失败:', error);
+    res.status(500).json({ error: '生成故事视频失败，请重试' });
   }
 });
 
-// 🔊 文字转语音（TTS）
-router.post('/api/story/text-to-speech', async (req: Request, res:Response) => {
+// 文字转语音
+storyRouter.post('/text-to-speech', async (req: Request, res: Response) => {
   try {
     const { text, language = 'zh' } = req.body;
-    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
-    
+
     if (!text) {
-      res.status(400).json({ error: '请提供要转换的文字' });
-      return;
+      return res.status(400).json({ error: '请提供要转换的文字' });
     }
 
-    // 初始化 TTS 客户端
-    const client = new TTSClient(ttsConfig, customHeaders);
+    console.log('收到TTS请求:', text.substring(0, 30));
 
-    console.log('正在生成语音，文字:', text.substring(0, 50), '...');
+    const speaker = language === 'zh'
+      ? 'zh_female_xueayi_saturn_bigtts'
+      : 'en_us_male_crisp_high_stight_bigtts';
 
-    // 选择语音：根据语言选择儿童有声书风格的声音
-    const speaker = language === 'zh' 
-      ? 'zh_female_xueayi_saturn_bigtts' // 儿童有声书
-      : 'zh_female_vv_uranus_bigtts';    // 中英双语
-
-    // 生成语音
-    const response = await client.synthesize({
+    const response = await ttsClient.synthesize({
       uid: `story_${Date.now()}`,
-      text: text,
-      speaker: speaker,
+      text,
+      speaker,
       audioFormat: 'mp3',
-      sampleRate: 24000,
-      speechRate: 0, // 正常语速
+      sampleRate: 24000
     });
 
-    if (response.audioUri) {
-      res.json({ 
-        success: true, 
-        audioUrl: response.audioUri,
-        message: '语音生成成功！' 
-      });
-    } else {
-      res.status(500).json({ 
-        error: '语音生成失败',
-        details: '未获取到音频URL' 
-      });
-    }
-  } catch (error) {
-    console.error('生成语音失败:', error);
-    res.status(500).json({ error: '生成语音失败，请重试' });
+    console.log('TTS生成成功:', response.audioUri);
+    res.json({
+      success: true,
+      audioUrl: response.audioUri
+    });
+
+  } catch (error: any) {
+    console.error('TTS生成失败:', error);
+    res.status(500).json({ error: '语音合成失败，请重试' });
   }
 });
 
-// 🔊 为故事生成语音（每页文字转语音）
-router.post('/api/story/generate-story-audio', async (req: Request, res: Response) => {
+// 为故事每页生成语音
+storyRouter.post('/generate-story-audio', async (req: Request, res: Response) => {
   try {
     const { story, language = 'zh' } = req.body;
-    const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
-    
+
     if (!story || !story.pages) {
-      res.status(400).json({ error: '故事数据无效' });
-      return;
+      return res.status(400).json({ error: '请提供有效的故事内容' });
     }
 
-    // 初始化 TTS 客户端
-    const client = new TTSClient(ttsConfig, customHeaders);
+    console.log('收到生成故事语音请求:', story.title);
 
-    // 选择语音：根据语言选择儿童有声书风格的声音
-    const speaker = language === 'zh' 
-      ? 'zh_female_xueayi_saturn_bigtts' // 儿童有声书
-      : 'zh_female_vv_uranus_bigtts';    // 中英双语
+    const speaker = language === 'zh'
+      ? 'zh_female_xueayi_saturn_bigtts'
+      : 'en_us_male_crisp_high_stight_bigtts';
 
-    const updatedPages: StoryPage[] = [];
-    
-    for (const page of story.pages) {
+    const updatedPages = [...story.pages];
+
+    for (let i = 0; i < updatedPages.length; i++) {
+      const page = updatedPages[i];
+      if (!page.text) continue;
+
+      console.log(`正在生成第${i + 1}页语音...`);
+
       try {
-        console.log(`正在生成第 ${page.page} 页语音...`);
-
-        const response = await client.synthesize({
-          uid: `story_page_${page.page}_${Date.now()}`,
+        const response = await ttsClient.synthesize({
+          uid: `story_${Date.now()}_${i}`,
           text: page.text,
-          speaker: speaker,
+          speaker,
           audioFormat: 'mp3',
-          sampleRate: 24000,
-          speechRate: 0, // 正常语速
+          sampleRate: 24000
         });
 
-        updatedPages.push({
-          ...page,
-          audioUrl: response.audioUri || '',
-        });
-
-        // 添加延迟避免请求过快
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (audioError) {
-        console.error(`生成第 ${page.page} 页语音失败:`, audioError);
-        updatedPages.push({
-          ...page,
-          audioUrl: '',
-        });
+        page.audioUrl = response.audioUri || '';
+        console.log(`第${i + 1}页语音生成成功`);
+      } catch (error) {
+        console.error(`第${i + 1}页语音生成失败:`, error);
       }
     }
 
-    res.json({ 
-      success: true, 
-      story: {
-        ...story,
-        pages: updatedPages
-      } 
-    });
-  } catch (error) {
-    console.error('批量生成语音失败:', error);
-    res.status(500).json({ error: '批量生成语音失败，请重试' });
+    story.pages = updatedPages;
+    console.log('故事语音生成完成');
+    res.json({ success: true, story });
+
+  } catch (error: any) {
+    console.error('生成故事语音失败:', error);
+    res.status(500).json({ error: '生成故事语音失败，请重试' });
   }
 });
 
-export default router;
+export default storyRouter;
