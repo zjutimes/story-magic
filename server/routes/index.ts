@@ -207,45 +207,38 @@ storyRouter.post('/generate-illustrations', async (req: Request, res: Response) 
   try {
     const { story } = req.body;
     console.log('收到生成插图请求:', story?.title);
-
+  
     if (!story || !story.pages) {
       return res.status(400).json({ error: '请提供有效的故事内容' });
     }
 
     const updatedPages = [...story.pages];
-    const chunkSize = 3; // 并行处理
 
-    for (let i = 0; i < updatedPages.length; i += chunkSize) {
-      const chunk = updatedPages.slice(i, i + chunkSize);
-      console.log(`正在生成第${i + 1}-${Math.min(i + chunkSize, updatedPages.length)}张插图...`);
+    for (let i = 0; i < updatedPages.length; i++) {
+      const page = updatedPages[i];
+      try {
+        const prompt = `${page.imagePrompt}, children's picture book style, watercolor effect, soft pastel colors, warm atmosphere, high quality, detailed illustration`;
+        console.log(`正在生成第${i + 1}张插图...`);
 
-      const results = await Promise.all(
-        chunk.map(async (page, index) => {
-          try {
-            const prompt = `${page.imagePrompt}, children's picture book style, watercolor effect, soft pastel colors, warm atmosphere, high quality, detailed illustration`;
-            console.log(`生成第${i + index + 1}张插图 prompt:`, prompt.substring(0, 50) + '...');
+        const response = await imageClient.generate({
+          prompt,
+          size: '1K'
+        });
 
-            const response = await imageClient.generate({
-              prompt,
-              size: '1K'
-            });
-
-            const helper = imageClient.getResponseHelper(response);
-            if (helper.success && helper.imageUrls.length > 0) {
-              page.imageUrl = helper.imageUrls[0];
-              console.log(`第${i + index + 1}张插图生成成功`);
-            }
-          } catch (error) {
-            console.error(`第${i + index + 1}张插图生成失败:`, error);
-          }
-          return page;
-        })
-      );
-
-      // 更新结果
-      results.forEach((page, index) => {
-        updatedPages[i + index] = page;
-      });
+        let imageUrl = '';
+        if (typeof response === 'string') {
+          imageUrl = response;
+        } else if (response && typeof response === 'object') {
+          imageUrl = (response as any).imageUrls?.[0] || (response as any).url || '';
+        }
+        
+        if (imageUrl) {
+          page.imageUrl = imageUrl;
+          console.log(`第${i + 1}张插图生成成功:`, imageUrl.substring(0, 50));
+        }
+      } catch (error) {
+        console.error(`第${i + 1}张插图生成失败:`, error);
+      }
     }
 
     story.pages = updatedPages;
@@ -300,10 +293,13 @@ Return only the English description, nothing else.`;
     );
 
     let imagePrompt = '';
-    const helper = llmClient.getResponseHelper(response);
-    if (helper.success && helper.content) {
-      imagePrompt = helper.content.trim();
-    } else {
+    if (typeof response === 'string') {
+      imagePrompt = response.trim();
+    } else if (response && typeof response === 'object') {
+      imagePrompt = (response as any).content || '';
+    }
+    
+    if (!imagePrompt) {
       throw new Error('生成画图描述失败');
     }
 
@@ -313,15 +309,26 @@ Return only the English description, nothing else.`;
       size: '1K'
     });
 
-    const imgHelper = imageClient.getResponseHelper(imgResponse);
-    if (!imgHelper.success || imgHelper.imageUrls.length === 0) {
+    let imageUrl = '';
+    if (typeof imgResponse === 'string') {
+      imageUrl = imgResponse;
+    } else if (imgResponse && typeof imgResponse === 'object') {
+      imageUrl = (imgResponse as any).imageUrls?.[0] 
+        || (imgResponse as any).url 
+        || (imgResponse as any).data?.[0]?.url 
+        || (imgResponse as any).images?.[0]?.url 
+        || '';
+    }
+    
+    if (!imageUrl) {
+      console.error('无法从响应中提取图片URL:', imgResponse);
       throw new Error('生成插图失败');
     }
 
     console.log('单张插图生成成功');
     res.json({
       success: true,
-      imageUrl: imgHelper.imageUrls[0],
+      imageUrl,
       imagePrompt
     });
 
@@ -350,11 +357,17 @@ storyRouter.post('/generate-batch-images', async (req: Request, res: Response) =
             size: '1K'
           });
 
-          const helper = imageClient.getResponseHelper(response);
+          let imageUrl = '';
+          if (typeof response === 'string') {
+            imageUrl = response;
+          } else if (response && typeof response === 'object') {
+            imageUrl = (response as any).imageUrls?.[0] || (response as any).url || '';
+          }
+          
           return {
             index,
-            success: helper.success,
-            imageUrl: helper.success ? helper.imageUrls[0] : null
+            success: !!imageUrl,
+            imageUrl
           };
         } catch (error) {
           console.error(`第${index + 1}张插图生成失败:`, error);

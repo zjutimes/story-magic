@@ -394,6 +394,7 @@
             storyTitle.textContent = currentStory.title;
             storyCharacter.textContent = currentStory.characterDescription;
             
+            generateNavigation();
             displayPage(0);
           }, 500);
         } else {
@@ -484,7 +485,36 @@
     // 生成插图
     document.getElementById('btn-illustrate').addEventListener('click', async () => {
       if (!currentStory || isGenerating) return;
-      alert(currentLanguage === 'zh' ? '插图生成功能即将上线！' : 'Illustration feature coming soon!');
+      
+      isGenerating = true;
+      const btn = document.getElementById('btn-illustrate');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin inline-block">⏳</span> 生成中...';
+      
+      try {
+        const response = await fetch('/api/story/generate-illustrations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ story: currentStory })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          currentStory = data.story;
+          displayPage(currentPage);
+          alert(currentLanguage === 'zh' ? '插图生成完成！' : 'Illustrations generated!');
+        } else {
+          throw new Error(data.error);
+        }
+      } catch (error) {
+        console.error('生成插图失败:', error);
+        alert(currentLanguage === 'zh' ? '生成插图失败，请重试！' : 'Failed to generate illustrations!');
+      } finally {
+        isGenerating = false;
+        btn.disabled = false;
+        btn.innerHTML = '🎨 生成插图';
+      }
     });
     
     console.log('Story Magic loaded!');
