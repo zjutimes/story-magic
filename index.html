@@ -241,6 +241,24 @@
               </div>
             </div>
           </div>
+          
+          <!-- 出版说明 -->
+          <div id="publish-info" class="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-6 mt-8">
+            <h3 class="text-xl font-bold text-amber-800 mb-3">📚 出版指南</h3>
+            <div class="grid md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p class="font-semibold text-amber-700">推荐尺寸</p>
+                <p class="text-gray-600">8.5" x 8.5" (正方形精装书)</p>
+                <p class="text-gray-600">8" x 10" (矩形平装书)</p>
+              </div>
+              <div>
+                <p class="font-semibold text-amber-700">图片要求</p>
+                <p class="text-gray-600">300 DPI 高清图片</p>
+                <p class="text-gray-600">CMYK 颜色模式</p>
+              </div>
+            </div>
+            <p class="text-gray-500 mt-4 text-xs">💡 点击"出版书籍"生成可打印的HTML文件，然后在浏览器中打印为PDF即可上传到亚马逊KDP。</p>
+          </div>
         </div>
 
         <!-- 故事展示 -->
@@ -253,6 +271,7 @@
           <!-- 功能按钮 -->
           <div class="flex flex-wrap justify-center gap-4 mb-8">
             <button id="btn-illustrate" class="bg-white text-purple-600 px-6 py-3 rounded-full font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all cursor-pointer">🎨 生成插图</button>
+            <button id="generate-book-btn" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-3 rounded-full font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all cursor-pointer">📖 出版书籍</button>
             <button id="btn-new" class="bg-white/20 text-white px-6 py-3 rounded-full font-bold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all cursor-pointer">🔄 重新创作</button>
           </div>
           
@@ -516,6 +535,53 @@
         btn.innerHTML = '🎨 生成插图';
       }
     });
+
+    // 生成出版书籍按钮
+    const generateBookBtn = document.getElementById('generate-book-btn');
+    if (generateBookBtn) {
+      generateBookBtn.addEventListener('click', async () => {
+        if (!currentStory) {
+          alert(currentLanguage === 'zh' ? '请先生成故事！' : 'Please generate a story first!');
+          return;
+        }
+        
+        const btn = generateBookBtn;
+        btn.disabled = true;
+        btn.innerHTML = '📚 生成中...';
+
+        try {
+          const response = await fetch('/api/publish/generate-book-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              story: currentStory,
+              size: '8.5x8.5',
+              includeCover: true
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            const message = currentLanguage === 'zh'
+              ? `书籍已生成！\n尺寸: ${data.bookSize}\n页数: ${data.pages}页\n\n点击确定在新窗口打开，然后使用浏览器打印为PDF。`
+              : `Book generated!\nSize: ${data.bookSize}\nPages: ${data.pages}\n\nClick OK to open in new window, then print to PDF.`;
+            
+            if (confirm(message)) {
+              window.open(data.bookUrl, '_blank');
+            }
+          } else {
+            throw new Error(data.error);
+          }
+        } catch (error) {
+          console.error('生成书籍失败:', error);
+          alert(currentLanguage === 'zh' ? '生成书籍失败，请重试！' : 'Failed to generate book!');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '📖 出版书籍';
+        }
+      });
+    }
     
     console.log('Story Magic loaded!');
   </script>

@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import router from './routes/index.js';
+import publishRouter from './routes/publish.js';
 import { setupVite } from './vite.js';
 
 const app: Express = express();
@@ -20,16 +21,15 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Register API routes BEFORE Vite middleware
-app.use('/api/story', router);
-
 async function start() {
-  // In development, use Vite middleware
+  // In development, use Vite middleware (API routes are registered in vite.ts)
   if (process.env.NODE_ENV !== 'production') {
     await setupVite(app, PORT);
   } else {
     // In production, serve static files
     app.use(express.static('dist'));
+    app.use('/api/story', router);
+    app.use('/api/publish', publishRouter);
   }
 
   // Start server

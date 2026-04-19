@@ -39,11 +39,25 @@ pnpm build && pnpm start
 | 接口 | 方法 | 功能 |
 |-----|------|------|
 | `/api/story/generate` | POST | 生成英雄之旅故事 |
-| `/api/story/generate-illustrations` | POST | 生成故事插图 |
-| `/api/story/generate-video` | POST | 生成视频 |
-| `/api/story/text-to-speech` | POST | 文字转语音 |
-| `/api/story/generate-story-videos` | POST | 批量生成故事视频 |
-| `/api/story/generate-story-audio` | POST | 批量生成故事语音 |
+| `/api/story/generate-illustrations` | POST | 生成故事插图（快速模式） |
+| `/api/publish/generate-book-pdf` | POST | 生成可出版书籍HTML |
+| `/api/publish/specs` | GET | 获取亚马逊出版规格 |
+
+### 出版书籍功能
+
+Story Magic 支持生成符合亚马逊KDP标准的儿童绘本：
+
+**支持的尺寸：**
+- 8.5" x 8.5" (正方形精装书) - 默认
+- 8" x 10" (矩形平装书)
+- 11" x 8.5" (横向大尺寸)
+
+**出版流程：**
+1. 输入主题，生成故事
+2. 生成插图（可选）
+3. 点击"📖 出版书籍"生成HTML
+4. 在浏览器中打开，使用打印功能导出为PDF
+5. 上传到亚马逊KDP出版
 
 ### 生成故事示例
 

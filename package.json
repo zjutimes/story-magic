@@ -17,6 +17,7 @@
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.2",
     "express": "4.21.2",
+    "fs-extra": "^11.3.4",
     "pg": "^8.20.0",
     "pg-protocol": "1.13.0"
   },

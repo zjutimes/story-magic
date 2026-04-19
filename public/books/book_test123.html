@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>小兔子去上学</title>
+  <style>
+    @page { size: 2550px 2550px; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Georgia, serif; background: white; }
+    .page { width: 2550px; height: 2550px; position: relative; overflow: hidden; page-break-after: always; }
+    .cover { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 150px; }
+    .cover-title { font-size: 255px; color: white; font-weight: bold; text-shadow: 2px 2px 8px rgba(0,0,0,0.3); margin-bottom: 40px; }
+    .cover-author { font-size: 170px; color: rgba(255,255,255,0.9); }
+    .cover-badge { position: absolute; bottom: 75px; font-size: 24px; color: rgba(255,255,255,0.8); }
+    .interior-page { display: flex; flex-direction: column; align-items: center; padding: 75px; background: #fffef8; }
+    .page-number { position: absolute; bottom: 37.5px; font-size: 24px; color: #666; }
+    .story-text { font-size: 115px; color: #333; text-align: center; line-height: 1.8; max-width: 2250px; margin-top: auto; margin-bottom: auto; }
+    .illustration-img { width: 2400px; height: 1475px; object-fit: contain; }
+    .end-page { background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white; }
+  </style>
+</head>
+<body>
+
+  <div class="page cover">
+    <div class="cover-title">小兔子去上学</div>
+    <div class="cover-author">By Story Magic</div>
+    <div class="cover-badge">A Children's Picture Book</div>
+  </div>
+
+  <div class="page interior-page">
+    <div style="width:100%;height:60%;background:#f0f0f0;display:flex;justify-content:center;align-items:center;color:#999;">Illustration 1</div>
+    <p class="story-text">蹦蹦兔住在山坡上</p>
+    <div class="page-number">1</div>
+  </div>
+
+  <div class="page end-page">
+    <div style="font-size: 48px; margin-bottom: 30px;">The End</div>
+    <div style="font-size: 24px; opacity: 0.8;">Thank you for reading!</div>
+    <div style="font-size: 18px; opacity: 0.6; margin-top: 60px;">Created with Story Magic</div>
+  </div>
+
+</body>
+</html>
